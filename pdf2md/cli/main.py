@@ -5,8 +5,8 @@ from typing import Optional
 
 import click
 
-from pdf2md.ocr import PaddleOCREngine
-from pdf2md.utils import FileManager, ProgressTracker, get_logger
+from pdf2md.core import Pipeline
+from pdf2md.utils import FileManager, get_logger
 
 logger = get_logger()
 
@@ -119,131 +119,105 @@ def main(
     logger.info("PDF to Markdown Converter v0.1.0")
     logger.info(f"Input: {input_path}")
 
-    # Initialize file manager
-    file_manager = FileManager(output_path)
+    # Determine if OCR is enabled
+    enable_ocr = ocr_mode != "never"
 
-    # Check if input is a directory or file
-    from pathlib import Path
+    # Initialize pipeline
+    pipeline = Pipeline(
+        file_manager=FileManager(output_path),
+        enable_ocr=enable_ocr,
+        ocr_config={
+            "min_chars": ocr_min_chars,
+            "min_ratio": ocr_min_ratio,
+            "max_image_ratio": ocr_image_ratio,
+        },
+        image_config={
+            "max_width": max_image_width,
+            "quality": image_quality,
+        },
+    )
 
-    input_file = Path(input_path)
+    try:
+        # Check if input is a directory or file
+        from pathlib import Path
 
-    if input_file.is_dir():
-        # Batch processing
-        process_directory(input_path, file_manager)
-    elif input_file.is_file() and input_file.suffix.lower() == ".pdf":
-        # Single file processing
-        process_file(
-            input_path,
-            file_manager,
-            ocr_mode,
-            ocr_min_chars,
-            ocr_min_ratio,
-            ocr_image_ratio,
-            resume,
-        )
-    else:
-        logger.error(f"Invalid input: {input_path} (must be a PDF file or directory)")
+        input_file = Path(input_path)
+
+        if input_file.is_dir():
+            # Batch processing
+            process_directory(input_path, pipeline)
+        elif input_file.is_file() and input_file.suffix.lower() == ".pdf":
+            # Single file processing
+            process_file(input_path, pipeline, resume)
+        else:
+            logger.error(f"Invalid input: {input_path} (must be a PDF file or directory)")
+            sys.exit(1)
+
+    except KeyboardInterrupt:
+        logger.info("\nProcessing interrupted by user")
+        sys.exit(130)
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
         sys.exit(1)
+    finally:
+        pipeline.cleanup()
 
 
-def process_directory(
-    directory: str,
-    file_manager: FileManager,
-) -> None:
+def process_directory(directory: str, pipeline: Pipeline) -> None:
     """Process all PDF files in a directory.
 
     Args:
         directory: Directory path.
-        file_manager: File manager instance.
+        pipeline: Pipeline instance.
     """
     logger.info(f"Scanning directory: {directory}")
 
-    pdf_files = file_manager.scan_directory(directory)
+    results = pipeline.process_directory(directory)
 
-    if not pdf_files:
-        logger.warning("No PDF files found in directory")
-        return
+    # Print summary
+    success_count = sum(1 for r in results if r.success)
+    logger.info(
+        f"\n{'='*60}\n"
+        f"Processing Summary\n"
+        f"{'='*60}\n"
+        f"Total files: {len(results)}\n"
+        f"Successful: {success_count}\n"
+        f"Failed: {len(results) - success_count}\n"
+    )
 
-    logger.info(f"Found {len(pdf_files)} PDF file(s) to process")
-
-    for pdf_file in pdf_files:
-        logger.info(f"\n{'='*60}")
-        logger.info(f"Processing: {pdf_file}")
-
-        try:
-            process_file(
-                pdf_file,
-                file_manager,
-                ocr_mode="auto",
-                ocr_min_chars=100,
-                ocr_min_ratio=0.05,
-                ocr_image_ratio=0.80,
-                resume=False,
-            )
-        except Exception as e:
-            logger.error(f"Failed to process {pdf_file}: {e}")
-            continue
+    # Show results for each file
+    for result in results:
+        status = "✓" if result.success else "✗"
+        logger.info(
+            f"{status} {Path(result.file_path).name}: "
+            f"{result.processed_pages}/{result.total_pages} pages processed"
+        )
 
 
-def process_file(
-    file_path: str,
-    file_manager: FileManager,
-    ocr_mode: str,
-    ocr_min_chars: int,
-    ocr_min_ratio: float,
-    ocr_image_ratio: float,
-    resume: bool,
-) -> None:
+def process_file(file_path: str, pipeline: Pipeline, resume: bool) -> None:
     """Process a single PDF file.
 
     Args:
         file_path: Path to PDF file.
-        file_manager: File manager instance.
-        ocr_mode: OCR mode.
-        ocr_min_chars: Minimum character count for OCR.
-        ocr_min_ratio: Minimum text ratio for OCR.
-        ocr_image_ratio: Maximum image ratio for OCR.
+        pipeline: Pipeline instance.
         resume: Whether to resume from checkpoint.
     """
-    # Validate file
-    if not file_manager.validate_pdf(file_path):
-        return
-
     logger.info(f"Processing file: {file_path}")
 
-    # Check disk space
-    output_dir = file_manager.get_output_path(file_path)
-    if not file_manager.check_disk_space(output_dir, required_mb=1000):
-        logger.error("Insufficient disk space")
-        return
+    result = pipeline.process_file(file_path, resume=resume)
 
-    # Initialize progress tracker
-    progress = ProgressTracker(str(output_dir))
-    progress.start(file_path)
-
-    try:
-        # Placeholder for actual PDF processing
-        # This will be implemented with the Core module
-        logger.info("PDF processing not yet implemented")
-        logger.info("This is a placeholder for the complete implementation")
-
-        # For now, just create the output directory structure
-        file_manager.create_output_structure(str(output_dir))
-
-        # Create a placeholder markdown file
-        placeholder_md = output_dir / "README.md"
-        with open(placeholder_md, "w", encoding="utf-8") as f:
-            f.write(f"# {file_path}\n\n")
-            f.write("This is a placeholder for the converted Markdown content.\n\n")
-            f.write("Full implementation coming soon.\n")
-
-        logger.info(f"Created placeholder output: {output_dir}")
-
-    except Exception as e:
-        logger.error(f"Error processing file: {e}")
-        raise
-    finally:
-        progress.complete()
+    if result.success:
+        logger.info(f"\n{'='*60}")
+        logger.info(f"✓ Processing completed successfully")
+        logger.info(f"{'='*60}")
+        logger.info(f"Pages processed: {len(result.processed_pages)}/{result.total_pages}")
+        logger.info(f"Output directory: {result.output_dir}")
+    else:
+        logger.error(f"\n{'='*60}")
+        logger.error(f"✗ Processing failed")
+        logger.error(f"{'='*60}")
+        logger.error(f"Error: {result.error_message}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

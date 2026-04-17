@@ -96,18 +96,18 @@ pdf2md/
 
 ## 阶段 3: 核心功能实现 ⏳
 
-### 3.1 Core 模块 (优先级: 高)
+### 3.1 Core 模块 (优先级: 高) ✅
 
-- [ ] `pipeline.py` - 流水线编排器
-- [ ] `page_processor.py` - 页面处理器
-- [ ] `resource_manager.py` - 资源管理器
+- [x] `pipeline.py` - 流水线编排器
+- [x] `page_processor.py` - 页面处理器
+- [x] `resource_manager.py` - 资源管理器
 
-### 3.2 Extractor 模块 (优先级: 高)
+### 3.2 Extractor 模块 (优先级: 高) ✅
 
-- [ ] `text_extractor.py` - 文本提取
-- [ ] `image_extractor.py` - 图片提取
-- [ ] `table_extractor.py` - 表格提取
-- [ ] `layout_analyzer.py` - 布局分析
+- [x] `text_extractor.py` - 文本提取
+- [x] `image_extractor.py` - 图片提取
+- [x] `table_extractor.py` - 表格提取
+- [x] `layout_analyzer.py` - 布局分析
 
 ### 3.3 OCR 模块 (优先级: 高) ✅
 
@@ -221,7 +221,7 @@ pdf2md/
 |--------|----------|------|
 | 设计完成 | 2026-04-17 | ✅ 已完成 |
 | 项目初始化 | 2026-04-17 | ✅ 已完成 |
-| 核心功能实现 MVP | TBD | ⏳ 进行中 |
+| 核心功能实现 MVP | 2026-04-17 | ⏳ 进行中 |
 | 完整功能实现 | TBD | ⏸️ 待开始 |
 | 测试覆盖达标 | TBD | ⏸️ 待开始 |
 | 文档完善 | TBD | ⏸️ 待开始 |
@@ -253,6 +253,8 @@ pdf2md/
 | 2026-04-17 | Utils 模块实现完成：logger, file_manager, progress | 工具模块 |
 | 2026-04-17 | OCR 模块实现完成：base, paddleocr | OCR 模块 |
 | 2026-04-17 | CLI 模块实现完成：Click 接口 | CLI 接口 |
+| 2026-04-17 | Extractor 模块实现完成：text, image, table, layout | 内容提取 |
+| 2026-04-17 | Core 模块实现完成：pipeline, page_processor, resource_manager | 核心处理 |
 
 ---
 
