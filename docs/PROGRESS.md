@@ -114,23 +114,23 @@ pdf2md/
 - [x] `base.py` - OCR 抽象基类
 - [x] `paddleocr.py` - PaddleOCR 实现
 
-### 3.4 Deduplicator 模块 (优先级: 中)
+### 3.4 Deduplicator 模块 (优先级: 中) ✅
 
-- [ ] `chapter_detector.py` - 章节边界检测
-- [ ] `header_footer.py` - 页眉页脚去重
-- [ ] `edge_text.py` - 边缘文本处理
+- [x] `chapter_detector.py` - 章节边界检测
+- [x] `header_footer.py` - 页眉页脚去重
+- [x] `edge_text.py` - 边缘文本处理
 
-### 3.5 Summary 模块 (优先级: 中)
+### 3.5 Summary 模块 (优先级: 中) ⏸️
 
 - [ ] `extractor.py` - 摘要提取器
 - [ ] `rule_based.py` - 规则提取
 - [ ] `ai_assistant.py` - AI 辅助（可选）
 
-### 3.6 Markdown 模块 (优先级: 高)
+### 3.6 Markdown 模块 (优先级: 高) ✅
 
-- [ ] `generator.py` - 主生成器
-- [ ] `table_formatter.py` - 表格格式化
-- [ ] `linker.py` - 资源链接管理
+- [x] `generator.py` - 主生成器
+- [x] `table_formatter.py` - 表格格式化
+- [x] `linker.py` - 资源链接管理
 
 ### 3.7 Utils 模块 (优先级: 高)
 

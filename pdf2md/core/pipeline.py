@@ -8,6 +8,8 @@ import pdfplumber
 
 from pdf2md.core.page_processor import PageData, PageProcessor
 from pdf2md.core.resource_manager import get_resource_manager
+from pdf2md.deduplicator import ChapterDetector, EdgeTextHandler, HeaderFooterDeduplicator
+from pdf2md.markdown import MarkdownGenerator
 from pdf2md.utils import FileManager, ProgressTracker, get_logger
 
 logger = get_logger()
@@ -280,34 +282,47 @@ class Pipeline:
             output_dir: Output directory.
             source_path: Source file path.
         """
-        # This is a placeholder for the actual Markdown generation
-        # The complete implementation will use the Markdown module
+        logger.info("Generating output files...")
 
-        logger.info("Generating output files (placeholder implementation)")
+        # Detect chapters
+        chapter_detector = ChapterDetector()
+        chapter_boundaries = chapter_detector.detect_chapters(pages_data)
 
-        # Create a simple summary file
-        summary_path = output_dir / "summary.md"
+        logger.info(f"Detected {len(chapter_boundaries)} chapter boundaries")
 
-        with open(summary_path, "w", encoding="utf-8") as f:
-            f.write(f"# Processing Summary\n\n")
-            f.write(f"**Source**: `{source_path}`\n\n")
-            f.write(f"**Total Pages**: {len(pages_data)}\n\n")
+        # Deduplicate headers/footers
+        deduplicator = HeaderFooterDeduplicator()
+        deduplicated_headers = deduplicator.deduplicate(
+            pages_data, chapter_boundaries
+        )
 
-            f.write("## Page Statistics\n\n")
-            f.write("| Page | Words | Images | Tables | OCR Used |\n")
-            f.write("|------|-------|--------|--------|----------|\n")
+        # Handle edge text
+        edge_handler = EdgeTextHandler()
+        edge_texts = edge_handler.extract_edge_text(pages_data)
 
-            for page_data in pages_data:
-                ocr_used = "Yes" if page_data.ocr_result and page_data.ocr_result.text else "No"
-                f.write(
-                    f"| {page_data.page_number} | "
-                    f"{page_data.text_statistics.get('word_count', 0)} | "
-                    f"{len(page_data.images)} | "
-                    f"{len(page_data.tables)} | "
-                    f"{ocr_used} |\n"
-                )
+        # Generate Markdown output
+        markdown_generator = MarkdownGenerator(
+            base_output_dir=output_dir,
+            include_images=True,
+            include_tables=True,
+            include_ocr_text=True,
+        )
 
-        logger.info(f"Created summary: {summary_path}")
+        # Determine output format
+        output_format = markdown_generator.determine_output_format(pages_data)
+        logger.info(f"Output format: {output_format}")
+
+        if output_format == "multi":
+            # Generate main file
+            markdown_generator.generate_main_file(pages_data, source_path, output_dir)
+
+            # Generate detail files
+            markdown_generator.generate_detail_files(pages_data, output_dir, chapter_boundaries)
+        else:
+            # Generate single file
+            markdown_generator.generate_single_file(pages_data, source_path, output_dir)
+
+        logger.info("Output generation complete")
 
     def cleanup(self) -> None:
         """Clean up resources."""
