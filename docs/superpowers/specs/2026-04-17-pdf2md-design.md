@@ -136,7 +136,7 @@ pdf2md/
 **Key Classes:**
 
 - `OCREngine` (Abstract Base):
-  - `needs_ocr(page)`: Detect if OCR is required
+  - `needs_ocr(page, extracted_text)`: Detect if OCR is required based on extracted text
   - `extract_text(image)`: Extract text from image
   - `supported_languages`: Return supported language codes
 
@@ -153,6 +153,19 @@ pdf2md/
 - Lazy invocation based on page analysis
 - Image preprocessing for better accuracy
 - Result caching for repeated patterns
+
+**OCR Detection Logic:**
+OCR is invoked when one of the following conditions is met:
+1. Text extraction fails completely (returns empty or None)
+2. Extracted text is less than 100 characters OR less than 5% of typical page text volume
+3. Page contains primarily images with minimal selectable text
+4. Image elements occupy more than 80% of page area
+
+**Caching Strategy:**
+- In-memory cache scope: Per-file (reset for each new PDF)
+- Cache key: Hash of image pixel data
+- Cache invalidation: Automatically cleared at end of file processing
+- No persistent caching across runs
 
 ### Markdown Module
 
@@ -196,6 +209,18 @@ pdf2md/
   - `extract_annotations(page)`: Find footnotes and annotations
   - `detect_chapters(pages)`: Identify chapter boundaries
 
+**Chapter Boundary Detection:**
+Chapters are identified by one or more of the following criteria:
+1. H1-level headings (detected by font size > 16pt and centered/positioned at top of page)
+2. Page breaks following section headers with numeric patterns (e.g., "Chapter 1", "第一章", "Section 1")
+3. Major headings that appear at the beginning of a page with large font size
+4. Document structure detection (if PDF has outline/bookmarks)
+
+Chapter boundaries are stored with page numbers and used for:
+- Header/footer deduplication at chapter level
+- Organizing detailed content sections in docs/ directory
+- Generating chapter-specific summaries
+
 - `AIExtractor` (Optional): AI-powered summarization
   - Placeholder for AI integration
   - Can use OpenAI API or local models
@@ -232,6 +257,26 @@ pdf2md/
   - `update(progress)`: Update progress
   - `save_checkpoint()`: Save progress for recovery
   - `resume(checkpoint)`: Resume from checkpoint
+
+**Checkpoint File Format:**
+Checkpoint files are stored as JSON in the same directory as the output file with the pattern `filename.pdf.checkpoint.json`:
+
+```json
+{
+  "file_hash": "sha256_hash_of_source_file",
+  "total_pages": 42,
+  "processed_pages": [1, 2, 3, 5, 6],
+  "failed_pages": [4],
+  "timestamp": "2026-04-17T10:30:00Z",
+  "version": "1.0"
+}
+```
+
+Resume logic:
+- Compare file hash to ensure source file hasn't changed
+- Skip pages already in processed_pages list
+- Retry pages in failed_pages list
+- Clean up checkpoint file on successful completion
 
 ## Data Flow
 
@@ -456,7 +501,6 @@ python pdf2md.py -input ./input/
 
 ## Future Enhancements
 
-- Resume interrupted processing
 - Parallel processing for multiple files
 - Custom summary templates
 - Additional OCR backends
