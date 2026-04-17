@@ -120,11 +120,11 @@ pdf2md/
 - [x] `header_footer.py` - 页眉页脚去重
 - [x] `edge_text.py` - 边缘文本处理
 
-### 3.5 Summary 模块 (优先级: 中) ⏸️
+### 3.5 Summary 模块 (优先级: 中) ✅
 
-- [ ] `extractor.py` - 摘要提取器
-- [ ] `rule_based.py` - 规则提取
-- [ ] `ai_assistant.py` - AI 辅助（可选）
+- [x] `extractor.py` - 摘要提取器
+- [x] `rule_based.py` - 规则提取
+- [x] `ai_assistant.py` - AI 辅助（可选）
 
 ### 3.6 Markdown 模块 (优先级: 高) ✅
 

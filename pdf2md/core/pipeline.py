@@ -10,6 +10,7 @@ from pdf2md.core.page_processor import PageData, PageProcessor
 from pdf2md.core.resource_manager import get_resource_manager
 from pdf2md.deduplicator import ChapterDetector, EdgeTextHandler, HeaderFooterDeduplicator
 from pdf2md.markdown import MarkdownGenerator
+from pdf2md.summary import SummaryExtractor
 from pdf2md.utils import FileManager, ProgressTracker, get_logger
 
 logger = get_logger()
@@ -284,6 +285,14 @@ class Pipeline:
         """
         logger.info("Generating output files...")
 
+        # Extract summary
+        summary_extractor = SummaryExtractor(enable_ai=False)
+        document_summary = summary_extractor.extract_summary(
+            pages_data, source_path, summary_type="rule_based"
+        )
+
+        logger.info(f"Extracted summary with {len(document_summary.headings)} headings")
+
         # Detect chapters
         chapter_detector = ChapterDetector()
         chapter_boundaries = chapter_detector.detect_chapters(pages_data)
@@ -314,13 +323,17 @@ class Pipeline:
 
         if output_format == "multi":
             # Generate main file
-            markdown_generator.generate_main_file(pages_data, source_path, output_dir)
+            markdown_generator.generate_main_file(
+                pages_data, source_path, output_dir, document_summary
+            )
 
             # Generate detail files
             markdown_generator.generate_detail_files(pages_data, output_dir, chapter_boundaries)
         else:
             # Generate single file
-            markdown_generator.generate_single_file(pages_data, source_path, output_dir)
+            markdown_generator.generate_single_file(
+                pages_data, source_path, output_dir, document_summary
+            )
 
         logger.info("Output generation complete")
 
