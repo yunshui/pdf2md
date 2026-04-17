@@ -255,6 +255,9 @@ pdf2md/
 | 2026-04-17 | CLI 模块实现完成：Click 接口 | CLI 接口 |
 | 2026-04-17 | Extractor 模块实现完成：text, image, table, layout | 内容提取 |
 | 2026-04-17 | Core 模块实现完成：pipeline, page_processor, resource_manager | 核心处理 |
+| 2026-04-17 | Deduplicator 模块实现完成：chapter, header_footer, edge_text | 去重模块 |
+| 2026-04-17 | Markdown 模块实现完成：generator, table_formatter, linker | 生成模块 |
+| 2026-04-17 | Pipeline 集成完成：完整的 PDF 到 Markdown 转换流程 | 完整流水线 |
 
 ---
 
