@@ -38,10 +38,12 @@
    - 边缘文字单独放到页末
 
 5. **输出组织**
-   - 统一输出到 `./input/xx_md/` 目录结构
-   - 结构: `xx.md` (主), `docs/` (详情), `assets/` (图片)
+   - 输出到指定的输出目录（使用 --output 参数）
+   - 如果未指定输出目录，默认为输入文件所在目录
+   - 包含图片的 PDF：总是输出为目录结构（不管页数多少）
+   - 纯文字的小文件 PDF（<10页）：可选输出为单 Markdown 文件
+   - 目录结构: `xx.md` (主), `docs/` (详情), `assets/` (图片)
    - 覆盖已存在的文件
-   - 小文档（<5页）可配置为输出单文件
 
 6. **CLI 接口**
    - 命令: `python pdf2md.py -input ./input/xx.pdf`
@@ -416,10 +418,18 @@ pdf2md/
 
 ### 边缘情况处理
 
-**小文档（1-2页）**:
-- 不进行章节检测
-- 所有内容放入主文件
-- 可选单文件输出模式
+**包含图片的 PDF（任何页数）**:
+- 总是输出为目录结构（创建 docs/ 和 assets/）
+- 不进行单文件输出
+- 图片保存到 assets/ 目录
+
+**纯文字 PDF（无图片）**:
+- 页数 < 10 页：输出为单 Markdown 文件
+  - 不创建子目录
+  - 不进行章节检测
+  - 所有内容放入单个文件
+- 页数 ≥ 10 页：输出为目录结构
+  - 进行章节检测和去重处理
 
 **无章节检测**:
 - 整个文档作为单个章节处理
@@ -429,7 +439,8 @@ pdf2md/
 **单页文档**:
 - 跳过章节检测
 - 跳过去重处理（无重复）
-- 直接输出为单文件
+- 纯文字单页：输出为单 Markdown 文件
+- 包含图片单页：输出为目录结构（保留图片到 assets/）
 
 **密码保护 PDF**:
 - 尝试验证密码: 如果用户在命令行提供密码则使用
@@ -557,18 +568,20 @@ tests/
 ### 命令结构
 
 ```bash
-# 基本用法
+# 基本用法（输出到输入文件所在目录）
 python pdf2md.py -input ./input/report.pdf
 
-# 批量处理
-python pdf2md.py -input ./input/
+# 指定输出目录
+python pdf2md.py -input ./input/report.pdf -output ./output/
+
+# 批量处理到指定输出目录
+python pdf2md.py -input ./input/ -output ./output/
 
 # 配置选项
-python pdf2md.py -input ./input/report.pdf \
+python pdf2md.py -input ./input/report.pdf -output ./output/ \
     --ocr-mode auto \
     --ocr-min-chars 100 \
     --ocr-min-ratio 0.05 \
-    --output-format multi \
     --image-quality 85 \
     --memory-monitor
 ```
@@ -578,11 +591,11 @@ python pdf2md.py -input ./input/report.pdf \
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
 | `-input` | 必需 | 输入文件或目录路径 |
+| `-output` | 输入文件所在目录 | 输出目录路径 |
 | `--ocr-mode` | auto | OCR 模式: auto/always/never |
 | `--ocr-min-chars` | 100 | OCR 触发的最小字符数 |
 | `--ocr-min-ratio` | 0.05 | OCR 触发的最小文本占比 |
 | `--ocr-image-ratio` | 0.80 | OCR 触发的最大图像占比 |
-| `--output-format` | auto | 输出格式: auto/multi/single |
 | `--image-quality` | 85 | 图片质量 (1-100) |
 | `--max-image-width` | 1920 | 图片最大宽度 (像素) |
 | `--memory-monitor` | false | 启用内存监控 |
@@ -591,10 +604,24 @@ python pdf2md.py -input ./input/report.pdf \
 
 ### 输出行为
 
-- `--output-format auto`: 自动选择（<5页单文件，≥5页多文件）
-- `--output-format multi`: 总是创建目录结构 `./input/filename_md/`
-- `--output-format single`: 输出单文件 `./input/filename.md`（不包含图片）
+**自动检测输出格式**:
+- 包含图片的 PDF：总是输出为目录结构（不管页数多少）
+- 纯文字 PDF（无图片）：
+  - 页数 < 10 页：输出为单 Markdown 文件 `./output/filename.md`
+  - 页数 ≥ 10 页：输出为目录结构
+
+**目录结构**: `./output/filename_md/`
+  - `filename.md` - 主文件（摘要 + 锚点）
+  - `docs/` - 详细内容章节
+  - `assets/` - 提取的图片
+
+**单文件输出**: `./output/filename.md`
+  - 包含完整文本内容
+  - 表格转换为 Markdown 格式
+  - 不包含图片（无 assets/ 目录）
+
 - 自动覆盖已存在的文件
+- 输出目录不存在时自动创建
 
 ### 进度报告
 
