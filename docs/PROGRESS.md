@@ -4,6 +4,13 @@
 **开始日期**: 2026-04-17
 **状态**: 设计阶段完成，等待实现
 
+**相关文档**:
+- [../README.md](../README.md) - 项目说明（英文）
+- [../README.zh.md](../README.zh.md) - 项目说明（中文）
+- [../CLAUDE.md](../CLAUDE.md) - 项目开发指南
+- [LESSONS.md](./LESSONS.md) - 经验教训和最佳实践
+- [superpowers/specs/](./superpowers/specs/) - 详细设计规范
+
 ---
 
 ## 项目概述

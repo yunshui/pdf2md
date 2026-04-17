@@ -4,6 +4,13 @@
 **记录时间**: 2026-04-17
 **维护者**: 项目团队
 
+**相关文档**:
+- [../README.md](../README.md) - 项目说明（英文）
+- [../README.zh.md](../README.zh.md) - 项目说明（中文）
+- [../CLAUDE.md](../CLAUDE.md) - 项目开发指南
+- [PROGRESS.md](./PROGRESS.md) - 项目进度跟踪
+- [superpowers/specs/](./superpowers/specs/) - 详细设计规范
+
 ---
 
 ## 概述

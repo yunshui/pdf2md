@@ -4,6 +4,15 @@
 **状态**: 已批准
 **方案**: 模块化流水线架构
 
+**相关文档**:
+- [../../../README.md](../../../README.md) - 项目说明（英文）
+- [../../../README.zh.md](../../../README.zh.md) - 项目说明（中文）
+- [../../../CLAUDE.md](../../../CLAUDE.md) - 项目开发指南
+- [../../PROGRESS.md](../../PROGRESS.md) - 项目进度跟踪
+- [../../LESSONS.md](../../LESSONS.md) - 经验教训和最佳实践
+
+---
+
 ## 概述
 
 基于 Python 的 PDF 转 Markdown 工具，支持：
