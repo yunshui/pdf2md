@@ -1,7 +1,10 @@
 """Logging utilities for pdf2md."""
 
 import logging
+import os
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 
@@ -27,18 +30,38 @@ class Logger:
         self.logger = logging.getLogger("pdf2md")
         self.logger.setLevel(logging.DEBUG)
 
-        # Console handler
+        # Create logs directory if it doesn't exist
+        self.logs_dir = Path("logs")
+        self.logs_dir.mkdir(exist_ok=True)
+
+        # Create log file with date (one file per day)
+        date_str = datetime.now().strftime("%Y%m%d")
+        log_file = self.logs_dir / f"pdf2md_{date_str}.log"
+
+        # Formatter with class, line number, and full timestamp
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(funcName)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+        # File handler for detailed logging
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
+
+        # Console handler with simpler format
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)
-
-        # Formatter
-        formatter = logging.Formatter(
+        console_formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
-        console_handler.setFormatter(formatter)
-
+        console_handler.setFormatter(console_formatter)
         self.logger.addHandler(console_handler)
+
+        self.log_file = log_file
+        self.info(f"Logging initialized. Log file: {log_file}")
 
     def info(self, msg: str, *args, **kwargs) -> None:
         """Log an info message."""
@@ -63,6 +86,22 @@ class Logger:
             level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         """
         self.logger.setLevel(getattr(logging, level.upper()))
+
+    def get_log_file(self) -> Optional[Path]:
+        """Get the current log file path.
+
+        Returns:
+            Path to the log file, or None if not available.
+        """
+        return getattr(self, "log_file", None)
+
+    def get_logs_dir(self) -> Path:
+        """Get the logs directory path.
+
+        Returns:
+            Path to the logs directory.
+        """
+        return self.logs_dir
 
 
 # Global logger instance

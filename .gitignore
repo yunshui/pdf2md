@@ -79,3 +79,4 @@ inference/
 
 # Logs
 *.log
+logs/
