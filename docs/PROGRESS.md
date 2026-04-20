@@ -194,8 +194,8 @@ python -m pytest tests/unit/test_utils.py -v
 
 ### 集成测试
 
-- [ ] `tests/integration/test_pipeline.py` - 端到端流水线测试
-- [ ] `tests/integration/test_cli.py` - CLI 接口测试
+- [x] `tests/integration/test_pipeline.py` - 端到端流水线测试 (待安装依赖)
+- [x] `tests/integration/test_cli.py` - CLI 接口测试 (待安装依赖)
 
 ### 测试数据
 
@@ -245,9 +245,10 @@ python -m pytest tests/unit/test_utils.py -v
 | 设计完成 | 2026-04-17 | ✅ 已完成 |
 | 项目初始化 | 2026-04-17 | ✅ 已完成 |
 | 核心功能实现 MVP | 2026-04-17 | ✅ 已完成 |
-| 基础单元测试 | 2026-04-20 | ✅ 已完成 |
+| 单元测试实现 | 2026-04-20 | ✅ 已完成 |
+| 集成测试实现 | 2026-04-20 | ✅ 已完成 |
 | 完整功能实现 | TBD | ⏸️ 待开始 |
-| 测试覆盖达标 | TBD | ⏳ 进行中 |
+| 测试覆盖达标（需安装依赖） | TBD | ⏳ 进行中 |
 | 文档完善 | TBD | ⏸️ 待开始 |
 | 首次发布 | TBD | ⏸️ 待开始 |
 
@@ -285,6 +286,7 @@ python -m pytest tests/unit/test_utils.py -v
 | 2026-04-17 | Summary 模块实现完成：extractor, rule_based, ai_assistant + pipeline 集成 | 摘要提取 |
 | 2026-04-20 | 单元测试实现完成：test_ocr, test_utils (54 测试全部通过) | 测试实现 |
 | 2026-04-20 | 单元测试实现完成：test_extractor, test_deduplicator, test_markdown, test_summary (待安装依赖) | 测试实现 |
+| 2026-04-20 | 集成测试实现完成：test_pipeline, test_cli (待安装依赖) | 测试实现 |
 
 ---
 
