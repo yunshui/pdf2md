@@ -2,7 +2,8 @@
 
 **项目名称**: pdf2md
 **开始日期**: 2026-04-17
-**状态**: 核心功能、测试、文档均已完成，待发布
+**状态**: 发布准备完成，版本 0.1.0
+**当前版本**: 0.1.0
 
 **相关文档**:
 - [../README.md](../README.md) - 项目说明（英文）
@@ -216,25 +217,30 @@ python -m pytest tests/unit/test_utils.py -v
 
 ---
 
-## 阶段 6: 优化和发布 ⏸️
+## 阶段 6: 优化和发布 ⏳
 
-### 性能优化
+### 发布准备
+
+- [x] 创建 CHANGELOG.md
+- [x] 添加 LICENSE 文件
+- [x] 创建 MANIFEST.in
+- [x] 更新版本信息
+- [x] 改进类型注解
+- [x] 创建 setup.py
+- [ ] 创建 GitHub Release
+- [ ] 打包和分发到 PyPI
+
+### 代码质量
+
+- [x] 类型注解完善
+- [ ] 代码覆盖率检查（需安装依赖）
+- [ ] 代码审查
+
+### 性能优化（可选）
 
 - [ ] 内存使用优化
 - [ ] 处理速度优化
 - [ ] OCR 准确率优化
-
-### 代码质量
-
-- [ ] 代码审查
-- [ ] 类型注解完善
-- [ ] 代码覆盖率检查
-
-### 发布准备
-
-- [ ] 版本号管理
-- [ ] 发布说明
-- [ ] 打包和分发
 
 ---
 
@@ -248,9 +254,9 @@ python -m pytest tests/unit/test_utils.py -v
 | 单元测试实现 | 2026-04-20 | ✅ 已完成 |
 | 集成测试实现 | 2026-04-20 | ✅ 已完成 |
 | 文档完善 | 2026-04-20 | ✅ 已完成 |
-| 完整功能实现 | TBD | ⏸️ 待开始 |
+| 发布准备 | 2026-04-20 | ✅ 已完成 |
 | 测试覆盖达标（需安装依赖） | TBD | ⏳ 进行中 |
-| 首次发布 | TBD | ⏸️ 待开始 |
+| PyPI 发布 | TBD | ⏸️ 待开始 |
 
 ---
 
@@ -288,6 +294,9 @@ python -m pytest tests/unit/test_utils.py -v
 | 2026-04-20 | 单元测试实现完成：test_extractor, test_deduplicator, test_markdown, test_summary (待安装依赖) | 测试实现 |
 | 2026-04-20 | 集成测试实现完成：test_pipeline, test_cli (待安装依赖) | 测试实现 |
 | 2026-04-20 | 文档完善完成：API.md, EXAMPLES.md, TROUBLESHOOTING.md, CONTRIBUTING.md | 文档 |
+| 2026-04-20 | 发布准备完成：CHANGELOG.md, LICENSE, MANIFEST.in, setup.py | 发布 |
+| 2026-04-20 | 版本信息更新：__init__.py, pyproject.toml | 配置 |
+| 2026-04-20 | 类型注解完善：全面检查和改进 | 代码质量 |
 
 ---
 
