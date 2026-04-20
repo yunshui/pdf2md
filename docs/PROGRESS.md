@@ -9,7 +9,14 @@
 - [../README.md](../README.md) - 项目说明（英文）
 - [../README.zh.md](../README.zh.md) - 项目说明（中文）
 - [../CLAUDE.md](../CLAUDE.md) - 项目开发指南
+- [../CHANGELOG.md](../CHANGELOG.md) - 变更日志
+- [../CONTRIBUTING.md](../CONTRIBUTING.md) - 贡献指南
+- [../LICENSE](../LICENSE) - 许可证
 - [LESSONS.md](./LESSONS.md) - 经验教训和最佳实践
+- [API.md](./API.md) - API 参考文档
+- [EXAMPLES.md](./EXAMPLES.md) - 使用示例
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - 故障排除
+- [RELEASE.md](./RELEASE.md) - 发布说明
 - [superpowers/specs/](./superpowers/specs/) - 详细设计规范
 
 ---
