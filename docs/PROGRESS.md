@@ -2,7 +2,7 @@
 
 **项目名称**: pdf2md
 **开始日期**: 2026-04-17
-**状态**: 核心功能实现完成，待测试
+**状态**: 核心功能实现完成，基础测试通过
 
 **相关文档**:
 - [../README.md](../README.md) - 项目说明（英文）
@@ -158,16 +158,39 @@ pdf2md/
 
 ---
 
-## 阶段 4: 测试实现 ⏳
+## 阶段 4: 测试实现 ✅
 
 ### 单元测试
 
-- [ ] `tests/unit/test_ocr.py` - OCR 引擎测试
-- [ ] `tests/unit/test_extractor.py` - 内容提取测试
-- [ ] `tests/unit/test_deduplicator.py` - 去重逻辑测试
-- [ ] `tests/unit/test_markdown.py` - Markdown 生成器测试
-- [ ] `tests/unit/test_summary.py` - 摘要提取测试
-- [ ] `tests/unit/test_utils.py` - 工具函数测试
+- [x] `tests/unit/test_ocr.py` - OCR 引擎测试 (16/16 通过)
+- [x] `tests/unit/test_extractor.py` - 内容提取测试 (待安装依赖)
+- [x] `tests/unit/test_deduplicator.py` - 去重逻辑测试 (待安装依赖)
+- [x] `tests/unit/test_markdown.py` - Markdown 生成器测试 (待安装依赖)
+- [x] `tests/unit/test_summary.py` - 摘要提取测试 (待安装依赖)
+- [x] `tests/unit/test_utils.py` - 工具函数测试 (38/38 通过)
+
+### 测试状态
+
+- 基础模块测试（不依赖外部库）：**通过** ✅
+  - test_ocr.py: 16 测试全部通过
+  - test_utils.py: 38 测试全部通过
+  - 总计: 54 测试通过
+
+- 完整模块测试（需要安装依赖）：**待执行** ⏸️
+  - 需要安装: `pip install pdfplumber pdf2image paddleocr Pillow click`
+
+### 运行测试
+
+```bash
+# 安装依赖
+pip install pdfplumber pdf2image paddleocr Pillow click
+
+# 运行所有测试
+python -m pytest tests/ -v
+
+# 运行特定测试文件
+python -m pytest tests/unit/test_utils.py -v
+```
 
 ### 集成测试
 
@@ -222,8 +245,9 @@ pdf2md/
 | 设计完成 | 2026-04-17 | ✅ 已完成 |
 | 项目初始化 | 2026-04-17 | ✅ 已完成 |
 | 核心功能实现 MVP | 2026-04-17 | ✅ 已完成 |
+| 基础单元测试 | 2026-04-20 | ✅ 已完成 |
 | 完整功能实现 | TBD | ⏸️ 待开始 |
-| 测试覆盖达标 | TBD | ⏸️ 待开始 |
+| 测试覆盖达标 | TBD | ⏳ 进行中 |
 | 文档完善 | TBD | ⏸️ 待开始 |
 | 首次发布 | TBD | ⏸️ 待开始 |
 
@@ -259,6 +283,8 @@ pdf2md/
 | 2026-04-17 | Markdown 模块实现完成：generator, table_formatter, linker | 生成模块 |
 | 2026-04-17 | Pipeline 集成完成：完整的 PDF 到 Markdown 转换流程 | 完整流水线 |
 | 2026-04-17 | Summary 模块实现完成：extractor, rule_based, ai_assistant + pipeline 集成 | 摘要提取 |
+| 2026-04-20 | 单元测试实现完成：test_ocr, test_utils (54 测试全部通过) | 测试实现 |
+| 2026-04-20 | 单元测试实现完成：test_extractor, test_deduplicator, test_markdown, test_summary (待安装依赖) | 测试实现 |
 
 ---
 
