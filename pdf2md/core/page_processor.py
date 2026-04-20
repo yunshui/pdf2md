@@ -7,16 +7,11 @@ from typing import List, Optional
 import pdfplumber
 
 from pdf2md.core.resource_manager import get_resource_manager
-from pdf2md.extractor import (
-    ImageExtractor,
-    ImageInfo,
-    LayoutAnalyzer,
-    LayoutInfo,
-    PageText,
-    TableExtractor,
-    Table,
-    TextExtractor,
-)
+from pdf2md.extractor.pdfplumber_types import TYPE_PAGE
+from pdf2md.extractor.image_extractor import ImageExtractor, ImageInfo
+from pdf2md.extractor.layout_analyzer import LayoutAnalyzer, LayoutInfo
+from pdf2md.extractor.text_extractor import PageText, TextExtractor
+from pdf2md.extractor.table_extractor import TableExtractor, Table
 from pdf2md.ocr import OCRResult, OCREngine
 from pdf2md.utils.logger import get_logger
 
@@ -34,7 +29,7 @@ class PageData:
     tables: List[Table]
     layout: LayoutInfo
     ocr_result: Optional[OCRResult]
-    raw_page: pdfplumber.Page
+    raw_page: TYPE_PAGE
 
     def has_content(self) -> bool:
         """Check if page has any content.
@@ -102,7 +97,7 @@ class PageProcessor:
 
     def process_page(
         self,
-        page: pdfplumber.Page,
+        page: TYPE_PAGE,
         page_number: int,
         output_dir: str,
     ) -> PageData:
@@ -134,7 +129,7 @@ class PageProcessor:
 
             # OCR if needed
             ocr_result = None
-            if self.enable_ocr and self._needs_ocr(page, text, layout):
+            if self.enable_ocr and self._needs_ocr(page, text, layout, text_stats):
                 ocr_result = self._perform_ocr(page, page_number)
 
             logger.debug(
@@ -182,9 +177,10 @@ class PageProcessor:
 
     def _needs_ocr(
         self,
-        page: pdfplumber.Page,
+        page: TYPE_PAGE,
         text: PageText,
         layout: LayoutInfo,
+        text_statistics: dict,
     ) -> bool:
         """Determine if OCR is needed for the page.
 
@@ -215,10 +211,10 @@ class PageProcessor:
             page_text=text.raw_text,
             has_images=layout.has_images,
             image_area_ratio=image_area_ratio,
-            typical_page_length=text.text_statistics.get("word_count", 0),
+            typical_page_length=text_statistics.get("word_count", 0),
         )
 
-    def _perform_ocr(self, page: pdfplumber.Page, page_number: int) -> Optional[OCRResult]:
+    def _perform_ocr(self, page: TYPE_PAGE, page_number: int) -> Optional[OCRResult]:
         """Perform OCR on a page.
 
         Args:
@@ -235,8 +231,14 @@ class PageProcessor:
             # Convert page to image
             from pdf2image import convert_from_path
 
+            # Get the file path from the PDF stream
+            pdf_path = getattr(page.pdf.stream, 'name', None)
+            if not pdf_path:
+                logger.error("Could not determine PDF file path for OCR")
+                return None
+
             images = convert_from_path(
-                page.pdf.stream,
+                pdf_path,
                 first_page=page_number,
                 last_page=page_number,
                 dpi=150,

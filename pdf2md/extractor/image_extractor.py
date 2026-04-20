@@ -7,6 +7,7 @@ from typing import Optional
 import pdfplumber
 from PIL import Image
 
+from pdf2md.extractor.pdfplumber_types import TYPE_PAGE
 from pdf2md.utils.logger import get_logger
 
 logger = get_logger()
@@ -64,7 +65,7 @@ class ImageExtractor:
 
     def extract(
         self,
-        page: pdfplumber.Page,
+        page,
         page_number: int,
         output_dir: str,
     ) -> list[ImageInfo]:
@@ -105,7 +106,7 @@ class ImageExtractor:
 
     def _extract_single_image(
         self,
-        page: pdfplumber.Page,
+        page: TYPE_PAGE,
         page_image: dict,
         page_number: int,
         image_index: int,
@@ -183,7 +184,7 @@ class ImageExtractor:
             logger.error(f"Error processing image {image_index} on page {page_number}: {e}")
             return None
 
-    def _page_to_pil_image(self, page: pdfplumber.Page) -> Optional[Image.Image]:
+    def _page_to_pil_image(self, page: TYPE_PAGE) -> Optional[Image.Image]:
         """Convert a pdfplumber page to a PIL Image.
 
         Args:
@@ -196,9 +197,15 @@ class ImageExtractor:
             # This requires pdf2image, which converts PDF to image
             from pdf2image import convert_from_path
 
+            # Get the file path from the PDF stream
+            pdf_path = getattr(page.pdf.stream, 'name', None)
+            if not pdf_path:
+                logger.error("Could not determine PDF file path for image extraction")
+                return None
+
             # Convert specific page to image
             images = convert_from_path(
-                page.pdf.stream,
+                pdf_path,
                 first_page=page.page_number,
                 last_page=page.page_number,
                 dpi=150,
@@ -321,7 +328,7 @@ class ImageExtractor:
 
     def get_image_area_ratio(
         self,
-        page: pdfplumber.Page,
+        page: TYPE_PAGE,
     ) -> float:
         """Calculate the ratio of page area occupied by images.
 

@@ -6,6 +6,7 @@ from typing import List, Optional
 
 import pdfplumber
 
+from pdf2md.extractor.pdfplumber_types import TYPE_PAGE
 from pdf2md.utils.logger import get_logger
 
 logger = get_logger()
@@ -101,7 +102,7 @@ class LayoutAnalyzer:
         self.footer_height = footer_height
         self.edge_margin = edge_margin
 
-    def analyze(self, page: pdfplumber.Page) -> LayoutInfo:
+    def analyze(self, page: TYPE_PAGE) -> LayoutInfo:
         """Analyze the layout of a PDF page.
 
         Args:
@@ -151,7 +152,7 @@ class LayoutAnalyzer:
         )
 
     def _detect_header(
-        self, page: pdfplumber.Page, words: List[dict], width: float
+        self, page: TYPE_PAGE, words: List[dict], width: float
     ) -> Optional[TextRegion]:
         """Detect header region.
 
@@ -189,7 +190,7 @@ class LayoutAnalyzer:
         )
 
     def _detect_footer(
-        self, page: pdfplumber.Page, words: List[dict], width: float, height: float
+        self, page: TYPE_PAGE, words: List[dict], width: float, height: float
     ) -> Optional[TextRegion]:
         """Detect footer region.
 
@@ -231,7 +232,7 @@ class LayoutAnalyzer:
         )
 
     def _detect_body(
-        self, page: pdfplumber.Page, words: List[dict], width: float, height: float
+        self, page: TYPE_PAGE, words: List[dict], width: float, height: float
     ) -> List[TextRegion]:
         """Detect body text regions.
 
@@ -290,7 +291,7 @@ class LayoutAnalyzer:
         return regions
 
     def _detect_edge_text(
-        self, page: pdfplumber.Page, words: List[dict], width: float, height: float
+        self, page: TYPE_PAGE, words: List[dict], width: float, height: float
     ) -> List[TextRegion]:
         """Detect edge text (text in page margins).
 
@@ -333,7 +334,7 @@ class LayoutAnalyzer:
         return regions
 
     def _detect_sidebars(
-        self, page: pdfplumber.Page, words: List[dict], width: float, height: float
+        self, page: TYPE_PAGE, words: List[dict], width: float, height: float
     ) -> List[TextRegion]:
         """Detect sidebar regions (vertical text columns).
 
@@ -425,7 +426,7 @@ class LayoutAnalyzer:
 
         return paragraphs
 
-    def _has_tables(self, page: pdfplumber.Page) -> bool:
+    def _has_tables(self, page: TYPE_PAGE) -> bool:
         """Check if page contains tables.
 
         Args:
@@ -443,7 +444,7 @@ class LayoutAnalyzer:
         except Exception:
             return False
 
-    def _calculate_text_density(self, page: pdfplumber.Page, words: List[dict]) -> float:
+    def _calculate_text_density(self, page: TYPE_PAGE, words: List[dict]) -> float:
         """Calculate text density (text area / page area).
 
         Args:

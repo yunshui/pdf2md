@@ -132,8 +132,8 @@ def main(
             "max_image_ratio": ocr_image_ratio,
         },
         image_config={
-            "max_width": max_image_width,
-            "quality": image_quality,
+            "image_max_width": max_image_width,
+            "image_quality": image_quality,
         },
     )
 

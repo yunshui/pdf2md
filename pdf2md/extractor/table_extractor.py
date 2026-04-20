@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import pdfplumber
 
+from pdf2md.extractor.pdfplumber_types import TYPE_PAGE, TYPE_TABLE
 from pdf2md.utils.logger import get_logger
 
 logger = get_logger()
@@ -129,7 +130,7 @@ class TableExtractor:
         """
         self.tolerance = tolerance
 
-    def extract(self, page: pdfplumber.Page) -> List[Table]:
+    def extract(self, page: TYPE_PAGE) -> List[Table]:
         """Extract tables from a PDF page.
 
         Args:
@@ -210,7 +211,7 @@ class TableExtractor:
             logger.error(f"Error converting table: {e}")
             return None
 
-    def has_tables(self, page: pdfplumber.Page) -> bool:
+    def has_tables(self, page: TYPE_PAGE) -> bool:
         """Check if page contains any tables.
 
         Args:
@@ -228,7 +229,7 @@ class TableExtractor:
         except Exception:
             return False
 
-    def get_table_count(self, page: pdfplumber.Page) -> int:
+    def get_table_count(self, page: TYPE_PAGE) -> int:
         """Get number of tables on a page.
 
         Args:
@@ -247,7 +248,7 @@ class TableExtractor:
             return 0
 
     def extract_as_text(
-        self, page: pdfplumber.Table, separator: str = " | "
+        self, page: TYPE_TABLE, separator: str = " | "
     ) -> str:
         """Extract table as plain text.
 

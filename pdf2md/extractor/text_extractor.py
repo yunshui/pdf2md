@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import pdfplumber
 
+from pdf2md.extractor.pdfplumber_types import TYPE_PAGE
 from pdf2md.utils.logger import get_logger
 
 logger = get_logger()
@@ -131,7 +132,7 @@ class TextExtractor:
         """
         self.preserve_formatting = preserve_formatting
 
-    def extract(self, page: pdfplumber.Page) -> PageText:
+    def extract(self, page: TYPE_PAGE) -> PageText:
         """Extract text from a PDF page.
 
         Args:
@@ -165,7 +166,7 @@ class TextExtractor:
 
         return PageText(elements=elements, raw_text=raw_text)
 
-    def _extract_text_elements(self, page: pdfplumber.Page) -> List[TextElement]:
+    def _extract_text_elements(self, page: TYPE_PAGE) -> List[TextElement]:
         """Extract text elements with formatting information.
 
         Args:
@@ -200,7 +201,7 @@ class TextExtractor:
 
         return elements
 
-    def _extract_plain_text_elements(self, page: pdfplumber.Page) -> List[TextElement]:
+    def _extract_plain_text_elements(self, page: TYPE_PAGE) -> List[TextElement]:
         """Extract text without formatting information.
 
         Args:

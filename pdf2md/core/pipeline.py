@@ -67,8 +67,8 @@ class Pipeline:
         # Configuration
         self.ocr_config = ocr_config or {}
         self.image_config = image_config or {
-            "max_width": 1920,
-            "quality": 85,
+            "image_max_width": 1920,
+            "image_quality": 85,
         }
 
         # Resource manager
