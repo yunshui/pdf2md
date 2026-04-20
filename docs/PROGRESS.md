@@ -2,7 +2,7 @@
 
 **项目名称**: pdf2md
 **开始日期**: 2026-04-17
-**状态**: 核心功能实现完成，基础测试通过
+**状态**: 核心功能、测试、文档均已完成，待发布
 
 **相关文档**:
 - [../README.md](../README.md) - 项目说明（英文）
@@ -207,12 +207,12 @@ python -m pytest tests/unit/test_utils.py -v
 
 ---
 
-## 阶段 5: 文档完善 ⏸️
+## 阶段 5: 文档完善 ✅
 
-- [ ] API 文档
-- [ ] 使用示例
-- [ ] 贡献指南
-- [ ] 故障排除指南
+- [x] API 文档 (docs/API.md)
+- [x] 使用示例 (docs/EXAMPLES.md)
+- [x] 贡献指南 (CONTRIBUTING.md)
+- [x] 故障排除指南 (docs/TROUBLESHOOTING.md)
 
 ---
 
@@ -247,9 +247,9 @@ python -m pytest tests/unit/test_utils.py -v
 | 核心功能实现 MVP | 2026-04-17 | ✅ 已完成 |
 | 单元测试实现 | 2026-04-20 | ✅ 已完成 |
 | 集成测试实现 | 2026-04-20 | ✅ 已完成 |
+| 文档完善 | 2026-04-20 | ✅ 已完成 |
 | 完整功能实现 | TBD | ⏸️ 待开始 |
 | 测试覆盖达标（需安装依赖） | TBD | ⏳ 进行中 |
-| 文档完善 | TBD | ⏸️ 待开始 |
 | 首次发布 | TBD | ⏸️ 待开始 |
 
 ---
@@ -287,6 +287,7 @@ python -m pytest tests/unit/test_utils.py -v
 | 2026-04-20 | 单元测试实现完成：test_ocr, test_utils (54 测试全部通过) | 测试实现 |
 | 2026-04-20 | 单元测试实现完成：test_extractor, test_deduplicator, test_markdown, test_summary (待安装依赖) | 测试实现 |
 | 2026-04-20 | 集成测试实现完成：test_pipeline, test_cli (待安装依赖) | 测试实现 |
+| 2026-04-20 | 文档完善完成：API.md, EXAMPLES.md, TROUBLESHOOTING.md, CONTRIBUTING.md | 文档 |
 
 ---
 
