@@ -1,5 +1,10 @@
 # PDF to Markdown Converter
 
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/pdf2md/releases)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/yourusername/pdf2md/blob/main/LICENSE)
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/yourusername/pdf2md)
+
 A Python-based tool for converting PDF files to Markdown format with multilingual OCR support (Chinese/English), high-fidelity formatting preservation, and key summary extraction.
 
 ## Features

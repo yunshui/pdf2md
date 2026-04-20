@@ -8,19 +8,19 @@ version = "0.1.0"
 description = "A Python-based tool for converting PDF files to Markdown format"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "pdf2md Team"}
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
     "pdfplumber>=0.10.0",
@@ -29,6 +29,11 @@ dependencies = [
     "Pillow>=10.0.0",
     "click>=8.1.0",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pdf2md*"]
+exclude = ["pdf2md.tests*", "pdf2md.fixtures*"]
 
 [project.optional-dependencies]
 dev = [

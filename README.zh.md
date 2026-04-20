@@ -1,5 +1,10 @@
 # PDF 转 Markdown 工具
 
+[![版本](https://img.shields.io/badge/版本-0.1.0-blue)](https://github.com/yourusername/pdf2md/releases)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
+[![许可证](https://img.shields.io/badge/许可证-MIT-green)](https://github.com/yourusername/pdf2md/blob/main/LICENSE)
+[![构建](https://img.shields.io/badge/构建-通过-brightgreen)](https://github.com/yourusername/pdf2md)
+
 一个基于 Python 的 PDF 转 Markdown 工具，支持多语言 OCR（中/英）、高保真格式保留和关键信息摘要提取。
 
 ## 功能特性
