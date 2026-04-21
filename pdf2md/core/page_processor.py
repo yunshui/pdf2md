@@ -52,15 +52,27 @@ class PageData:
         """
         texts = []
 
-        # Extracted text
-        if self.text.raw_text:
-            texts.append(self.text.raw_text)
+        # Extracted text (excluding edge text)
+        if self.body_text:
+            texts.append(self.body_text)
 
         # OCR text
         if self.ocr_result and self.ocr_result.text:
             texts.append(f"[OCR]\n{self.ocr_result.text}")
 
         return "\n\n".join(texts)
+
+    @property
+    def body_text(self) -> str:
+        """Get body text excluding edge regions.
+
+        Returns:
+            Body text string with edge text filtered out.
+        """
+        if not self.layout.edge_regions:
+            return self.text.raw_text
+
+        return self.text.get_body_text(self.layout.edge_regions)
 
 
 class PageProcessor:

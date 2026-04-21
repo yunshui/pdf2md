@@ -280,9 +280,9 @@ class MarkdownGenerator:
             # Page header
             lines.append(f"\n## Page {page_data.page_number}\n")
 
-            # Body text
-            if page_data.text.raw_text:
-                lines.append(page_data.text.raw_text)
+            # Body text (excluding edge text)
+            if page_data.body_text:
+                lines.append(page_data.body_text)
                 lines.append("")
 
             # Images
@@ -329,7 +329,7 @@ class MarkdownGenerator:
         # Add page content
         for page_data in pages_data:
             lines.append(f"\n## Page {page_data.page_number}\n")
-            lines.append(page_data.text.raw_text if page_data.text.raw_text else "*No text*")
+            lines.append(page_data.body_text if page_data.body_text else "*No text*")
             lines.append("")
 
         return "\n".join(lines)

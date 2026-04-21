@@ -260,7 +260,7 @@ class SummaryExtractor:
         key_points = []
 
         for page_data in pages_data:
-            paragraphs = page_data.text.raw_text.split("\n\n")
+            paragraphs = page_data.body_text.split("\n\n")
 
             for paragraph in paragraphs:
                 # Get first sentence

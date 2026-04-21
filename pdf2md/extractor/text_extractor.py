@@ -158,6 +158,95 @@ class PageText:
         """
         return [el for el in self.elements if el.font_size >= min_font_size]
 
+    def filter_elements_by_regions(
+        self, exclude_regions: List["TextRegion"]
+    ) -> List[TextElement]:
+        """Filter out text elements that fall within specified regions.
+
+        Args:
+            exclude_regions: List of TextRegion objects to exclude.
+
+        Returns:
+            Filtered list of text elements.
+        """
+        if not exclude_regions or not self.elements:
+            return self.elements[:]
+
+        filtered = []
+        for element in self.elements:
+            element_center_x = (element.x0 + element.x1) / 2
+            element_center_y = (element.y0 + element.y1) / 2
+
+            # Check if element is within any exclude region
+            is_excluded = False
+            for region in exclude_regions:
+                # Check if element center is within region
+                if (
+                    region.x0 <= element_center_x <= region.x1
+                    and region.y0 <= element_center_y <= region.y1
+                ):
+                    is_excluded = True
+                    break
+
+            if not is_excluded:
+                filtered.append(element)
+
+        return filtered
+
+    def get_body_text(self, exclude_regions: List["TextRegion"] = None) -> str:
+        """Get body text excluding specified regions (e.g., edge text).
+
+        Args:
+            exclude_regions: List of TextRegion objects to exclude from output.
+
+        Returns:
+            Body text string.
+        """
+        if not exclude_regions:
+            return self.raw_text
+
+        filtered_elements = self.filter_elements_by_regions(exclude_regions)
+
+        if not filtered_elements:
+            return ""
+
+        # Group filtered elements into lines for proper formatting
+        lines = self._group_elements_for_text(filtered_elements)
+        return "\n".join(lines)
+
+    def _group_elements_for_text(self, elements: List[TextElement]) -> List[str]:
+        """Group text elements into lines for text output.
+
+        Args:
+            elements: Text elements to group.
+
+        Returns:
+            List of text lines.
+        """
+        if not elements:
+            return []
+
+        # Group by lines (similar y coordinates)
+        lines_dict = {}
+        for element in elements:
+            # Round y position to group nearby elements
+            y_key = round(element.y0, 1)
+            if y_key not in lines_dict:
+                lines_dict[y_key] = []
+            lines_dict[y_key].append(element)
+
+        # Sort lines by y position (top to bottom)
+        sorted_ys = sorted(lines_dict.keys())
+
+        lines = []
+        for y in sorted_ys:
+            # Sort elements within line by x position (left to right)
+            line_elements = sorted(lines_dict[y], key=lambda el: el.x0)
+            line_text = " ".join(el.text for el in line_elements)
+            lines.append(line_text)
+
+        return lines
+
 
 class TextExtractor:
     """Extracts text content from PDF pages."""
@@ -307,6 +396,7 @@ class TextExtractor:
         This implements a proper reading order algorithm that handles:
         - Multi-column layouts
         - Complex text arrangements
+        - Scattered elements (like map labels)
         - Proper line-by-line ordering
 
         Args:
@@ -318,62 +408,168 @@ class TextExtractor:
         if not elements:
             return []
 
-        # Group elements by lines (similar y coordinates)
-        lines = self._group_elements_by_lines(elements)
+        # Detect typical font size for adaptive threshold
+        avg_font_size = 12.0
+        if elements and elements[0].font_size > 0:
+            font_sizes = [el.font_size for el in elements if el.font_size > 0]
+            if font_sizes:
+                avg_font_size = sum(font_sizes) / len(font_sizes)
+
+        # Adaptive line threshold based on font size
+        line_threshold = avg_font_size * 0.8
+
+        # Group elements by lines with adaptive threshold
+        lines = self._group_elements_by_lines_adaptive(elements, line_threshold)
 
         # Sort lines from top to bottom
         sorted_lines = sorted(lines, key=lambda line: self._get_line_y_position(line))
 
-        # For multi-column layouts, sort elements within each line
-        # Use a more sophisticated approach to detect columns
-        column_layout = self._detect_column_layout(sorted_lines)
+        # Detect and handle multi-column layouts
+        column_info = self._analyze_column_layout(sorted_lines)
 
-        # Flatten the sorted lines
+        # Flatten sorted lines considering column order
         sorted_elements = []
         for line in sorted_lines:
-            if column_layout == "multi":
-                # For multi-column, sort elements by x position
-                line_sorted = sorted(line, key=lambda el: el.x0)
+            if column_info["columns"] > 1:
+                # Multi-column: sort elements by column, then x within column
+                line_sorted = self._sort_line_by_columns(line, column_info)
             else:
-                # For single column, just sort by x position (left to right)
+                # Single column: simple left-to-right sort
                 line_sorted = sorted(line, key=lambda el: el.x0)
             sorted_elements.extend(line_sorted)
 
         return sorted_elements
 
-    def _detect_column_layout(self, lines: List[List[TextElement]]) -> str:
-        """Detect if the document has a multi-column layout.
+    def _group_elements_by_lines_adaptive(
+        self, elements: List[TextElement], threshold: float
+    ) -> List[List[TextElement]]:
+        """Group text elements into lines with adaptive threshold.
+
+        Args:
+            elements: List of TextElement objects.
+            threshold: Line threshold in pixels.
+
+        Returns:
+            List of lines, each line is a list of TextElement objects.
+        """
+        if not elements:
+            return []
+
+        # Sort by y position first
+        sorted_by_y = sorted(elements, key=lambda el: el.y0)
+
+        lines = []
+        current_line = [sorted_by_y[0]]
+        current_y = sorted_by_y[0].y0
+
+        for element in sorted_by_y[1:]:
+            # Check if element is on the same line (with some tolerance)
+            if abs(element.y0 - current_y) <= threshold:
+                current_line.append(element)
+            else:
+                lines.append(current_line)
+                current_line = [element]
+                current_y = element.y0
+
+        if current_line:
+            lines.append(current_line)
+
+        return lines
+
+    def _analyze_column_layout(self, lines: List[List[TextElement]]) -> dict:
+        """Analyze column layout in detail.
 
         Args:
             lines: List of lines.
 
         Returns:
-            "multi" if multi-column, "single" otherwise.
+            Dictionary with column info including boundaries.
         """
         if not lines:
-            return "single"
+            return {"columns": 1, "boundaries": []}
 
-        # Simplified column detection
-        # Check if there are consistent vertical gaps in x positions
+        # Collect all x positions
         x_positions = []
         for line in lines:
             for element in line:
                 x_positions.append(element.x0)
 
         if not x_positions:
-            return "single"
+            return {"columns": 1, "boundaries": []}
 
         x_positions.sort()
 
-        # Check for significant gaps
-        gaps = 0
+        # Find significant gaps that suggest column boundaries
+        page_width = max(el.x1 for line in lines for el in line)
+        gaps = []
+
         for i in range(1, len(x_positions)):
             gap = x_positions[i] - x_positions[i-1]
-            if gap > 100:  # Large gap suggests column boundary
-                gaps += 1
+            if gap > 50:  # Minimum gap to be considered
+                # Only consider gaps that are more than 5% of page width
+                if gap > page_width * 0.05:
+                    gaps.append((x_positions[i-1], x_positions[i], gap))
 
-        # If multiple gaps, likely multi-column
-        return "multi" if gaps >= 3 else "single"
+        # Sort gaps by size (descending)
+        gaps.sort(key=lambda g: g[2], reverse=True)
+
+        # Determine number of columns based on significant gaps
+        # Look for gaps that are consistently present across lines
+        column_boundaries = []
+        if len(gaps) >= 2:
+            # Likely multi-column
+            # Use the median gap position as boundary
+            if len(gaps) >= 2:
+                median_gap_idx = len(gaps) // 2
+                boundary_x = (gaps[median_gap_idx][0] + gaps[median_gap_idx][1]) / 2
+                column_boundaries = [boundary_x]
+
+        num_columns = len(column_boundaries) + 1
+
+        return {
+            "columns": num_columns,
+            "boundaries": column_boundaries,
+            "page_width": page_width
+        }
+
+    def _sort_line_by_columns(
+        self, line: List[TextElement], column_info: dict
+    ) -> List[TextElement]:
+        """Sort elements in a line by column order.
+
+        Args:
+            line: List of elements in the line.
+            column_info: Column analysis info.
+
+        Returns:
+            Sorted list of elements.
+        """
+        if column_info["columns"] <= 1:
+            return sorted(line, key=lambda el: el.x0)
+
+        # Sort by x position
+        sorted_line = sorted(line, key=lambda el: el.x0)
+
+        # Group by column
+        columns = [[] for _ in range(column_info["columns"])]
+        boundaries = column_info["boundaries"]
+
+        for element in sorted_line:
+            # Determine which column this element belongs to
+            col = 0
+            for i, boundary in enumerate(boundaries):
+                if element.x0 >= boundary:
+                    col = i + 1
+                else:
+                    break
+            columns[col].append(element)
+
+        # Flatten columns
+        result = []
+        for col in columns:
+            result.extend(sorted(col, key=lambda el: el.x0))
+
+        return result
 
     def _group_elements_by_lines(self, elements: List[TextElement]) -> List[List[TextElement]]:
         """Group text elements into lines based on y coordinates.

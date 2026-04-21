@@ -238,9 +238,9 @@ class EdgeTextHandler:
             edge_texts: List of edge text objects.
 
         Returns:
-            Markdown formatted string.
+            Markdown formatted string (without header, as it's added by caller).
         """
-        lines = ["## Edge Text\n"]
+        lines = []
 
         # Group by position
         by_position = defaultdict(list)

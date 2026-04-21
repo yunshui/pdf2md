@@ -170,7 +170,7 @@ class RuleBasedExtractor:
         summaries = []
 
         # Check text for footnote patterns
-        lines = page_data.text.raw_text.split("\n")
+        lines = page_data.body_text.split("\n")
 
         for line_idx, line in enumerate(lines):
             line = line.strip()
@@ -202,7 +202,7 @@ class RuleBasedExtractor:
         summaries = []
 
         # Check text for caption patterns
-        lines = page_data.text.raw_text.split("\n")
+        lines = page_data.body_text.split("\n")
 
         for line in lines:
             line = line.strip()
