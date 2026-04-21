@@ -78,15 +78,11 @@ class FileManager:
         base_name = input_file.stem
 
         if self.output_dir:
-            # Use specified output directory
-            base_dir = self.output_dir
+            # Use specified output directory directly (don't append _md)
+            return self.output_dir
         else:
-            # Use input file's directory
-            base_dir = input_file.parent
-
-        # Check if output should be a directory
-        output_dir = base_dir / f"{base_name}_md"
-        return output_dir
+            # Use input file's directory and append _md
+            return input_file.parent / f"{base_name}_md"
 
     def get_single_file_output_path(self, input_path: str) -> Path:
         """Get the single file output path.

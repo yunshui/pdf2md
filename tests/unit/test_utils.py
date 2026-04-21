@@ -107,7 +107,8 @@ class TestFileManager:
         """Test getting output path with specified output_dir."""
         fm = FileManager(output_dir="/tmp/output")
         result = fm.get_output_path("/input/test.pdf")
-        assert result == Path("/tmp/output/test_md")
+        # When output_dir is specified, use it directly without appending _md
+        assert result == Path("/tmp/output")
 
     def test_get_output_path_without_output_dir(self):
         """Test getting output path without specified output_dir."""

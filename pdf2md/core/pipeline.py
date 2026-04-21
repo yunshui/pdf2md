@@ -109,9 +109,12 @@ class Pipeline:
             )
 
         # Get output directory
+        original_output_dir = self.file_manager.output_dir
         if output_dir:
             self.file_manager.output_dir = Path(output_dir)
         output_path = self.file_manager.get_output_path(file_path)
+        # Restore original output_dir to avoid state pollution
+        self.file_manager.output_dir = original_output_dir
 
         # Check disk space
         if not self.file_manager.check_disk_space(output_path):
