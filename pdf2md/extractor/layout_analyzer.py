@@ -306,14 +306,52 @@ class LayoutAnalyzer:
         """
         edge_words = []
 
-        # Check left edge
-        left_edge = [w for w in words if w["x0"] < self.edge_margin]
-        # Check right edge
-        right_edge = [
-            w for w in words if w["x1"] > width - self.edge_margin
-        ]
+        # Calculate dynamic edge margin based on page width
+        edge_margin = max(50, width * 0.05)  # At least 50px or 5% of page width
 
-        edge_words = left_edge + right_edge
+        # Filter edge words with improved criteria
+        for word in words:
+            x0, x1 = word["x0"], word["x1"]
+            text = word["text"].strip()
+
+            # Skip empty text
+            if not text:
+                continue
+
+            # Skip very short text (likely artifacts)
+            if len(text) < 2:
+                continue
+
+            # Skip text that is purely numbers and very short (likely page numbers)
+            if text.isdigit() and len(text) < 4:
+                continue
+
+            # Skip text that looks like isolated punctuation
+            if all(c in '.,;:!?-—' for c in text):
+                continue
+
+            # Check if in edge regions
+            in_left_edge = x0 < edge_margin
+            in_right_edge = x1 > width - edge_margin
+
+            if in_left_edge or in_right_edge:
+                # Additional filtering for right edge
+                if in_right_edge:
+                    # Check if it's in the top or bottom 10% (likely headers/footers)
+                    y0, y1 = word["top"], word["bottom"]
+                    in_top = y0 < height * 0.1
+                    in_bottom = y1 > height * 0.9
+
+                    if in_top or in_bottom:
+                        # These are likely headers/footers, not edge text
+                        continue
+
+                    # Check if it's very close to the right edge (likely annotations)
+                    if x1 > width - edge_margin * 0.5:
+                        edge_words.append(word)
+                else:
+                    # Left edge text
+                    edge_words.append(word)
 
         if not edge_words:
             return []
