@@ -134,11 +134,41 @@ class Linker:
             Relative path as string.
         """
         try:
+            # Try direct relative path
             relative = target_path.relative_to(base_path)
             return str(relative).replace("\\", "/")  # Use forward slashes
         except ValueError:
-            # Paths don't share a common ancestor
-            return str(target_path)
+            # Paths don't share a direct subpath relationship
+            # Find common ancestor and build relative path
+            try:
+                # Convert to absolute paths
+                target_abs = target_path.resolve()
+                base_abs = base_path.resolve()
+
+                # Get common parts
+                target_parts = list(target_abs.parts)
+                base_parts = list(base_abs.parts)
+
+                # Find common ancestor
+                common_parts = []
+                for i, (t, b) in enumerate(zip(target_parts, base_parts)):
+                    if t == b:
+                        common_parts.append(t)
+                    else:
+                        break
+
+                # Build relative path
+                up_levels = len(base_parts) - len(common_parts)
+                target_relative_parts = target_parts[len(common_parts):]
+
+                # Add .. for each level up
+                up_parts = [".."] * up_levels
+                full_relative = Path(*up_parts, *target_relative_parts)
+
+                return str(full_relative).replace("\\", "/")
+            except:
+                # Fallback to absolute path
+                return str(target_path)
 
     def _get_image_alt_text(self, image_info: ImageInfo) -> str:
         """Generate alt text for an image.

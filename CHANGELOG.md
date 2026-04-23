@@ -8,7 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial release of pdf2md PDF to Markdown converter
+- pypdf>=3.0.0 dependency for improved image extraction
+- body_text property to PageData for edge text filtering
+- Filter methods to PageText for region-based text filtering
+
+### Changed
+- Image extraction now supports pypdf (no poppler required) as primary method
+- Improved relative path calculation for image links in multi-file output
+- Summary extractors now use body_text instead of raw_text to exclude edge text
+- Edge text section now has single header (fixed duplication)
+
+### Fixed
+- Edge text pollution in main content - page headers now properly filtered
+- Checkpoint file path duplication (double directory names)
+- Image link paths in docs/ directory now correctly use ../assets/
+- Duplicate "## Edge Text" header in markdown output
 
 ## [0.1.0] - 2026-04-20
 

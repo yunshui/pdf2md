@@ -288,7 +288,14 @@ class MarkdownGenerator:
             # Images
             if self.include_images and page_data.images:
                 for image_info in page_data.images:
-                    link = self.linker.create_image_link(image_info, self.base_output_dir / "assets")
+                    # Calculate relative path from the markdown file location
+                    # For multi-file output, markdown is in docs/ directory
+                    # For single-file output, markdown is in root directory
+                    markdown_dir = self.base_output_dir / "docs" if self.determine_output_format([page_data]) == "multi" else self.base_output_dir
+                    link = self.linker.create_image_link(
+                        image_info,
+                        markdown_dir
+                    )
                     lines.append(link)
                     lines.append("")
 

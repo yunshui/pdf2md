@@ -63,6 +63,15 @@ class ImageExtractor:
             logger.warning(f"Unsupported format {format}, using png")
             self.format = "png"
 
+        # Try to import pypdf for image extraction
+        self.has_pypdf = False
+        try:
+            import pypdf
+            self.has_pypdf = True
+            logger.debug("pypdf available for image extraction")
+        except ImportError:
+            logger.debug("pypdf not available, will use pdfplumber fallback")
+
     def extract(
         self,
         page,
@@ -138,33 +147,38 @@ class ImageExtractor:
 
         # Extract the image
         try:
-            # Convert page to image and crop
-            pil_image = self._page_to_pil_image(page)
+            # Try pypdf first (doesn't require poppler)
+            if self.has_pypdf:
+                pil_image = self._extract_with_pypdf(page, page_number, page_image)
 
             if pil_image is None:
-                logger.warning(f"Could not convert page {page_number} to image")
-                return None
+                # Fallback to pdfplumber direct extraction
+                pil_image = self._extract_image_directly(page, page_image)
 
-            # Crop to image area
-            cropped_image = self._crop_image(
-                pil_image,
-                x0,
-                y0,
-                x1,
-                y1,
-                page.width,
-                page.height,
-            )
+            if pil_image is None:
+                # Last resort: convert page to image (requires poppler)
+                pil_image = self._page_to_pil_image(page)
+                if pil_image is not None:
+                    # Crop to image area
+                    pil_image = self._crop_image(
+                        pil_image,
+                        x0,
+                        y0,
+                        x1,
+                        y1,
+                        page.width,
+                        page.height,
+                    )
 
-            if cropped_image is None:
-                logger.warning(f"Could not crop image on page {page_number}")
+            if pil_image is None:
+                logger.warning(f"Could not extract image {image_index} on page {page_number}")
                 return None
 
             # Optimize and save
-            self._optimize_and_save(cropped_image, output_path)
+            self._optimize_and_save(pil_image, output_path)
 
             logger.debug(
-                f"Saved image: {filename} ({cropped_image.width}x{cropped_image.height})"
+                f"Saved image: {filename} ({pil_image.width}x{pil_image.height})"
             )
 
             return ImageInfo(
@@ -182,6 +196,110 @@ class ImageExtractor:
 
         except Exception as e:
             logger.error(f"Error processing image {image_index} on page {page_number}: {e}")
+            return None
+
+    def _extract_with_pypdf(
+        self, page: TYPE_PAGE, page_number: int, page_image: dict
+    ) -> Optional[Image.Image]:
+        """Extract image using pypdf (doesn't require poppler).
+
+        Args:
+            page: pdfplumber Page object.
+            page_number: Page number.
+            page_image: Image dictionary from pdfplumber.
+
+        Returns:
+            PIL Image, or None if extraction failed.
+        """
+        try:
+            import pypdf
+
+            # Get PDF file path
+            pdf_path = getattr(page.pdf.stream, 'name', None)
+            if not pdf_path:
+                return None
+
+            # Open PDF with pypdf
+            reader = pypdf.PdfReader(pdf_path)
+
+            # Get images for the page
+            # Note: pypdf uses 0-indexed pages
+            pypdf_page = reader.pages[page_number - 1]
+            images = pypdf_page.images
+
+            # Find matching image by position
+            for img in images:
+                img_x0 = img.indirect_reference.get_object().get('x0', 0)
+                img_y0 = img.indirect_reference.get_object().get('y0', 0)
+                img_x1 = img.indirect_reference.get_object().get('x1', 0)
+                img_y1 = img.indirect_reference.get_object().get('y1', 0)
+
+                # Check if this is the image we're looking for
+                if (abs(img_x0 - page_image.get('x0', 0)) < 1 and
+                    abs(img_y0 - page_image.get('y0', 0)) < 1):
+                    return img.image
+
+            # If no match, return first image
+            if images:
+                return images[0].image
+
+            return None
+
+        except Exception as e:
+            logger.debug(f"pypdf extraction failed: {e}")
+            return None
+
+    def _extract_image_directly(
+        self, page: TYPE_PAGE, page_image: dict
+    ) -> Optional[Image.Image]:
+        """Extract image directly from PDF stream without poppler.
+
+        Args:
+            page: pdfplumber Page object.
+            page_image: Image dictionary from pdfplumber.
+
+        Returns:
+            PIL Image, or None if extraction failed.
+        """
+        try:
+            # Get the image object from the PDF
+            if 'stream' not in page_image:
+                return None
+
+            # Try to extract image data directly
+            from io import BytesIO
+
+            stream = page_image['stream']
+
+            # Get raw image data from PDF stream
+            try:
+                # Try to get image data
+                if hasattr(stream, 'get_data'):
+                    data = stream.get_data()
+                elif hasattr(stream, 'get_rawdata'):
+                    data = stream.get_rawdata()
+                else:
+                    # Try accessing as bytes
+                    data = stream
+            except:
+                return None
+
+            if not data:
+                return None
+
+            # Try to open the image data
+            image = Image.open(BytesIO(data))
+
+            # Convert to RGB for better compatibility
+            if image.mode == 'CMYK':
+                image = image.convert('RGB')
+            elif image.mode not in ('RGB', 'RGBA', 'L'):
+                image = image.convert('RGB')
+
+            return image
+
+        except Exception as e:
+            logger.debug(f"Could not extract image directly: {e}")
             return None
 
     def _page_to_pil_image(self, page: TYPE_PAGE) -> Optional[Image.Image]:
@@ -220,6 +338,60 @@ class ImageExtractor:
             return None
         except Exception as e:
             logger.error(f"Error converting page to image: {e}")
+            return None
+
+    def _extract_image_directly(
+        self, page: TYPE_PAGE, page_image: dict
+    ) -> Optional[Image.Image]:
+        """Extract image directly from PDF stream without poppler.
+
+        Args:
+            page: pdfplumber Page object.
+            page_image: Image dictionary from pdfplumber.
+
+        Returns:
+            PIL Image, or None if extraction failed.
+        """
+        try:
+            # Get the image object from the PDF
+            if 'stream' not in page_image:
+                return None
+
+            # Try to extract image data directly
+            from io import BytesIO
+            from PIL import Image
+
+            stream = page_image['stream']
+
+            # Get raw image data from PDF stream
+            try:
+                # Try to get image data
+                if hasattr(stream, 'get_data'):
+                    data = stream.get_data()
+                elif hasattr(stream, 'get_rawdata'):
+                    data = stream.get_rawdata()
+                else:
+                    # Try accessing as bytes
+                    data = stream
+            except:
+                return None
+
+            if not data:
+                return None
+
+            # Try to open the image data
+            image = Image.open(BytesIO(data))
+
+            # Convert to RGB for better compatibility
+            if image.mode == 'CMYK':
+                image = image.convert('RGB')
+            elif image.mode not in ('RGB', 'RGBA', 'L'):
+                image = image.convert('RGB')
+
+            return image
+
+        except Exception as e:
+            logger.debug(f"Could not extract image directly: {e}")
             return None
 
     def _crop_image(
