@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ChapterDetector: Structure-based chapter detection (layout changes, density changes)
 - ChapterDetector: Page top position detection (top 20% of page)
 - ChapterDetector: Font size comparison (1.3x median) for visual hierarchy
+- TextExtractor: Region-aware sorting for complex layouts
+- TextExtractor: Overlapping element detection and handling
+- TextExtractor: Caption and callout detection (Figure, Table, Note, etc.)
+- TextExtractor: Standard element sorting method (Y-first, X-secondary)
 
 ### Changed
 - Image extraction now supports pypdf (no poppler required) as primary method
@@ -30,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MockLayout tests now include text_density and body_regions attributes
 - MockPageData tests now include proper PageData structure
 - Chapter detection now scores and selects best heading on each page
+- Complex layout sorting can use layout information when available
 
 ### Fixed
 - Edge text pollution in main content - page headers now properly filtered

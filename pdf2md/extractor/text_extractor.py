@@ -823,3 +823,274 @@ class TextExtractor:
             "avg_font_size": avg_font_size,
             "has_large_font": has_large_font,
         }
+
+    def _sort_elements_with_region_awareness(
+        self, elements: List[TextElement], layout_info: Optional[dict] = None
+    ) -> List[TextElement]:
+        """Sort text elements with awareness of document regions.
+
+        This method improves text sorting for complex layouts by:
+        1. Separating elements by region (body, sidebar, etc.)
+        2. Sorting each region independently
+        3. Merging regions back in correct order
+
+        Args:
+            elements: List of TextElement objects.
+            layout_info: Optional layout information containing region boundaries.
+
+        Returns:
+            Sorted list of TextElement objects.
+        """
+        if not elements:
+            return []
+
+        # If no layout info, fall back to standard sorting
+        if not layout_info:
+            return self._sort_elements_standard(elements)
+
+        # Separate elements by region
+        body_elements = []
+        sidebar_elements = []
+        other_elements = []
+
+        edge_regions = layout_info.get('edge_regions', [])
+        sidebar_regions = layout_info.get('sidebar_regions', [])
+
+        for element in elements:
+            # Check if element is in sidebar
+            in_sidebar = False
+            for region in sidebar_regions:
+                if self._is_element_in_region(element, region):
+                    in_sidebar = True
+                    break
+
+            if in_sidebar:
+                sidebar_elements.append(element)
+            # Check if element is in body (not edge)
+            elif not any(self._is_element_in_region(element, region) for region in edge_regions):
+                body_elements.append(element)
+            else:
+                other_elements.append(element)
+
+        # Sort each region independently
+        sorted_body = self._sort_elements_standard(body_elements)
+        sorted_sidebar = self._sort_elements_standard(sidebar_elements)
+        sorted_other = self._sort_elements_standard(other_elements)
+
+        # Merge regions back - typically body first, then sidebars
+        result = []
+        result.extend(sorted_body)
+        result.extend(sorted_other)
+        result.extend(sorted_sidebar)
+
+        return result
+
+    def _is_element_in_region(self, element: TextElement, region: dict) -> bool:
+        """Check if a text element is within a region.
+
+        Args:
+            element: TextElement to check.
+            region: Region dictionary with x0, y0, x1, y1.
+
+        Returns:
+            True if element is within or overlaps with the region.
+        """
+        # Get element center
+        elem_center_x = (element.x0 + element.x1) / 2
+        elem_center_y = (element.y0 + element.y1) / 2
+
+        region_x0 = region.get('x0', 0)
+        region_y0 = region.get('y0', 0)
+        region_x1 = region.get('x1', 999999)
+        region_y1 = region.get('y1', 999999)
+
+        return (
+            region_x0 <= elem_center_x <= region_x1
+            and region_y0 <= elem_center_y <= region_y1
+        )
+
+    def _detect_overlapping_elements(self, elements: List[TextElement]) -> List[List[TextElement]]:
+        """Detect groups of overlapping text elements.
+
+        Args:
+            elements: List of TextElement objects.
+
+        Returns:
+            List of groups, where each group contains overlapping elements.
+        """
+        if len(elements) < 2:
+            return []
+
+        overlapping_groups = []
+        used_indices = set()
+
+        for i, elem1 in enumerate(elements):
+            if i in used_indices:
+                continue
+
+            group = [elem1]
+            used_indices.add(i)
+
+            for j, elem2 in enumerate(elements[i+1:], start=i+1):
+                if j in used_indices:
+                    continue
+
+                if self._elements_overlap(elem1, elem2):
+                    group.append(elem2)
+                    used_indices.add(j)
+
+            if len(group) > 1:
+                overlapping_groups.append(group)
+
+        return overlapping_groups
+
+    def _elements_overlap(self, elem1: TextElement, elem2: TextElement) -> bool:
+        """Check if two text elements overlap.
+
+        Args:
+            elem1: First TextElement.
+            elem2: Second TextElement.
+
+        Returns:
+            True if elements overlap.
+        """
+        # Check horizontal overlap
+        h_overlap = not (elem1.x1 < elem2.x0 or elem2.x1 < elem1.x0)
+
+        # Check vertical overlap
+        v_overlap = not (elem1.y1 < elem2.y0 or elem2.y1 < elem1.y0)
+
+        return h_overlap and v_overlap
+
+    def _sort_elements_standard(self, elements: List[TextElement]) -> List[TextElement]:
+        """Standard text element sorting for normal layouts.
+
+        Args:
+            elements: List of TextElement objects.
+
+        Returns:
+            Sorted list of TextElement objects.
+        """
+        if not elements:
+            return []
+
+        # Sort by y position (top to bottom), then by x position (left to right)
+        return sorted(elements, key=lambda el: (-el.y0, el.x0))
+
+    def _detect_captions_and_callouts(self, elements: List[TextElement]) -> dict:
+        """Detect captions and callouts that should be positioned specially.
+
+        Args:
+            elements: List of TextElement objects.
+
+        Returns:
+            Dictionary with 'captions' and 'callouts' lists, and 'remaining' elements.
+        """
+        captions = []
+        callouts = []
+        remaining = []
+
+        for element in elements:
+            # Check for caption-like properties
+            if self._is_caption(element):
+                captions.append(element)
+            # Check for callout-like properties
+            elif self._is_callout(element):
+                callouts.append(element)
+            else:
+                remaining.append(element)
+
+        return {
+            'captions': captions,
+            'callouts': callouts,
+            'remaining': remaining
+        }
+
+    def _is_caption(self, element: TextElement) -> bool:
+        """Check if an element is likely a caption.
+
+        Args:
+            element: TextElement to check.
+
+        Returns:
+            True if element is likely a caption.
+        """
+        text = element.text.strip().lower()
+
+        # Common caption patterns
+        caption_patterns = ['fig.', 'figure', 'table', '图表', '图', '表', 'caption']
+
+        # Check if text starts with caption pattern
+        for pattern in caption_patterns:
+            if text.startswith(pattern):
+                return True
+
+        # Captions are typically smaller font, not bold
+        if element.font_size > 0 and element.font_size < 12.0 and not element.is_bold:
+            # Check if short text (captions are usually concise)
+            if len(text) < 200:
+                return True
+
+        return False
+
+    def _is_callout(self, element: TextElement) -> bool:
+        """Check if an element is likely a callout or floating text.
+
+        Args:
+            element: TextElement to check.
+
+        Returns:
+            True if element is likely a callout.
+        """
+        text = element.text.strip()
+
+        # Callouts are often short and distinctive
+        if len(text) < 50:
+            # Check for common callout patterns
+            callout_patterns = ['note:', 'tip:', 'warning:', '注意', '提示', '警告']
+
+            for pattern in callout_patterns:
+                if text.lower().startswith(pattern):
+                    return True
+
+            # Callouts often have different formatting
+            if element.is_bold and element.font_size > 0 and element.font_size < 14.0:
+                return True
+
+        return False
+
+    def _merge_complex_layout(
+        self, elements: List[TextElement], layout_info: Optional[dict] = None
+    ) -> List[TextElement]:
+        """Merge text elements with complex layout awareness.
+
+        Args:
+            elements: List of TextElement objects.
+            layout_info: Optional layout information.
+
+        Returns:
+            Merged list of TextElement objects.
+        """
+        if not elements:
+            return []
+
+        # Detect special elements
+        classified = self._detect_captions_and_callouts(elements)
+
+        # Process remaining elements (main content)
+        remaining_sorted = self._sort_elements_with_region_awareness(
+            classified['remaining'], layout_info
+        )
+
+        # Detect and handle overlapping elements
+        overlapping_groups = self._detect_overlapping_elements(remaining_sorted)
+
+        # Merge remaining elements
+        merged_remaining = self._merge_adjacent_elements(remaining_sorted)
+
+        # Combine results: main content + captions + callouts
+        result = merged_remaining[:]
+        result.extend(classified['captions'])
+        result.extend(classified['callouts'])
+
+        return result
