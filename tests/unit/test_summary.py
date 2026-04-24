@@ -1,6 +1,6 @@
 """Unit tests for Summary module."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 from unittest.mock import Mock
 
@@ -35,7 +35,7 @@ class MockLayout:
     """Mock layout for testing."""
     width: float = 595.0
     height: float = 842.0
-    edge_regions: List = []
+    edge_regions: List = field(default_factory=list)
 
 
 @dataclass
@@ -45,7 +45,7 @@ class MockPageData:
     text: MockPageText
     layout: MockLayout
     text_statistics: dict
-    images: List = []
+    images: List = field(default_factory=list)
 
     def get_all_text(self) -> str:
         return self.text.raw_text

@@ -34,16 +34,28 @@ class MockLayout:
     """Mock layout for testing."""
     width: float = 595.0
     height: float = 842.0
+    text_density: float = 0.5
+    body_regions: list = None
+    header_region = None
+    footer_region = None
+    edge_regions: list = None
+    sidebar_regions: list = None
+    has_images: bool = False
+    has_tables: bool = False
+
+    def __post_init__(self):
+        if self.body_regions is None:
+            self.body_regions = []
+        if self.edge_regions is None:
+            self.edge_regions = []
+        if self.sidebar_regions is None:
+            self.sidebar_regions = []
 
     def get_header_text(self) -> str:
         return ""
 
     def get_footer_text(self) -> str:
         return ""
-
-    @property
-    def edge_regions(self) -> list:
-        return []
 
 
 @dataclass
@@ -164,14 +176,39 @@ class TestChapterDetector:
         heading = MockTextElement(
             text="Chapter Title",
             x0=200.0,
-            y0=50.0,
+            y0=700.0,  # Top of page (PDF coordinates from bottom-left)
             x1=395.0,
-            y1=100.0,
-            font_size=18.0,
+            y1=750.0,
+            font_size=24.0,  # Larger font for chapter heading
             is_bold=True,
         )
-        # Centered on 595 page, large font, bold
-        assert detector._is_likely_chapter_heading(heading, 595.0)
+        # Add regular text elements to establish median font size
+        regular_text1 = MockTextElement(
+            text="Some regular text",
+            x0=50.0,
+            y0=600.0,
+            x1=545.0,
+            y1=650.0,
+            font_size=12.0,
+            is_bold=False,
+        )
+        regular_text2 = MockTextElement(
+            text="More regular text",
+            x0=50.0,
+            y0=550.0,
+            x1=545.0,
+            y1=600.0,
+            font_size=12.0,
+            is_bold=False,
+        )
+        # Create PageData with layout
+        layout = MockLayout(width=595.0, height=842.0)
+        page_text = MockPageText(elements=[heading, regular_text1, regular_text2])
+        page_data = MockPageData(
+            page_number=1, text=page_text, layout=layout
+        )
+        # Centered on 595 page, large font, bold, at top of page
+        assert detector._is_likely_chapter_heading(heading, page_data)
 
     def test_is_likely_chapter_heading_small_font(self):
         """Test _is_likely_chapter_heading returns False for small font."""
@@ -179,13 +216,18 @@ class TestChapterDetector:
         heading = MockTextElement(
             text="Text",
             x0=200.0,
-            y0=50.0,
+            y0=700.0,
             x1=395.0,
-            y1=100.0,
+            y1=750.0,
             font_size=12.0,
             is_bold=True,
         )
-        assert not detector._is_likely_chapter_heading(heading, 595.0)
+        layout = MockLayout(width=595.0, height=842.0)
+        page_text = MockPageText(elements=[heading])
+        page_data = MockPageData(
+            page_number=1, text=page_text, layout=layout
+        )
+        assert not detector._is_likely_chapter_heading(heading, page_data)
 
     def test_is_likely_chapter_heading_not_bold(self):
         """Test _is_likely_chapter_heading returns False for non-bold."""
@@ -193,13 +235,18 @@ class TestChapterDetector:
         heading = MockTextElement(
             text="Title",
             x0=200.0,
-            y0=50.0,
+            y0=700.0,
             x1=395.0,
-            y1=100.0,
+            y1=750.0,
             font_size=18.0,
             is_bold=False,
         )
-        assert not detector._is_likely_chapter_heading(heading, 595.0)
+        layout = MockLayout(width=595.0, height=842.0)
+        page_text = MockPageText(elements=[heading])
+        page_data = MockPageData(
+            page_number=1, text=page_text, layout=layout
+        )
+        assert not detector._is_likely_chapter_heading(heading, page_data)
 
     def test_is_likely_chapter_heading_not_centered(self):
         """Test _is_likely_chapter_heading returns False for non-centered."""
@@ -207,13 +254,18 @@ class TestChapterDetector:
         heading = MockTextElement(
             text="Title",
             x0=50.0,
-            y0=50.0,
+            y0=700.0,
             x1=200.0,
-            y1=100.0,
+            y1=750.0,
             font_size=18.0,
             is_bold=True,
         )
-        assert not detector._is_likely_chapter_heading(heading, 595.0)
+        layout = MockLayout(width=595.0, height=842.0)
+        page_text = MockPageText(elements=[heading])
+        page_data = MockPageData(
+            page_number=1, text=page_text, layout=layout
+        )
+        assert not detector._is_likely_chapter_heading(heading, page_data)
 
     def test_detect_chapters_from_outline(self):
         """Test detecting chapters from PDF outline."""

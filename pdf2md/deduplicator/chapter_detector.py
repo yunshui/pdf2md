@@ -40,11 +40,20 @@ class ChapterDetector:
         r"^§\s*\d+",  # § 1
         r"^Part\s+[IVXLCDM]+",  # Part I
         r"^PART\s+[IVXLCDM]+",  # PART I
+        r"^Appendix\s+[A-Z0-9]+",  # Appendix A
+        r"^附录\s*[A-Z0-9]?",  # 附录
+        r"^Index\s*$",  # Index
+        r"^References\s*$",  # References
+        r"^Bibliography\s*$",  # Bibliography
+        r"^Conclusion\s*$",  # Conclusion
+        r"^Abstract\s*$",  # Abstract
+        r"^Introduction\s*$",  # Introduction
     ]
 
     # Heading font size threshold (points)
     MIN_HEADING_FONT_SIZE = 14.0
     MIN_LARGE_HEADING_FONT_SIZE = 16.0
+    TOP_PAGE_RATIO = 0.2  # Heading must be in top 20% of page
 
     def __init__(
         self,
@@ -98,6 +107,10 @@ class ChapterDetector:
         for page_data in pages_data:
             page_boundaries = self._detect_from_page(page_data)
             boundaries.extend(page_boundaries)
+
+        # Detect from visual structure changes
+        structure_boundaries = self._detect_from_structure(pages_data)
+        boundaries.extend(structure_boundaries)
 
         # Sort by page number and deduplicate nearby detections
         boundaries = self._sort_and_deduplicate(boundaries)
@@ -164,33 +177,155 @@ class ChapterDetector:
             min_font_size=self.MIN_HEADING_FONT_SIZE
         )
 
-        for heading in headings:
-            # Check if heading matches chapter pattern
-            text = heading.text.strip()
+        # Score headings and pick the best one
+        scored_headings = []
 
+        for heading in headings:
+            text = heading.text.strip()
+            score = 0
+
+            # Pattern matching gets high score
             if self._is_chapter_pattern(text):
+                score += 100
+                scored_headings.append((score, heading, "pattern"))
+            elif self._is_likely_chapter_heading(heading, page_data):
+                score += 50
+                scored_headings.append((score, heading, "font_position"))
+            # Additional checks for large, distinctive headings
+            elif heading.font_size >= self.MIN_LARGE_HEADING_FONT_SIZE:
+                # Check if at top of page
+                top_threshold = page_data.layout.height * (1 - self.TOP_PAGE_RATIO)
+                if heading.y1 >= top_threshold:
+                    score += 20
+                    scored_headings.append((score, heading, "position"))
+
+        # Sort by score and take the best one
+        if scored_headings:
+            scored_headings.sort(key=lambda x: -x[0])
+            best_score, best_heading, detection_method = scored_headings[0]
+
+            if best_score > 0:
                 boundaries.append(
                     ChapterBoundary(
                         chapter_number=0,
                         page_number=page_data.page_number,
-                        title=text,
-                        heading_element=heading,
-                        is_detected_by="pattern",
-                    )
-                )
-            elif self._is_likely_chapter_heading(heading, page_data.layout.width):
-                # Large, centered heading at top of page
-                boundaries.append(
-                    ChapterBoundary(
-                        chapter_number=0,
-                        page_number=page_data.page_number,
-                        title=text,
-                        heading_element=heading,
-                        is_detected_by="font_position",
+                        title=best_heading.text.strip(),
+                        heading_element=best_heading,
+                        is_detected_by=detection_method,
                     )
                 )
 
         return boundaries
+
+    def _detect_from_structure(
+        self, pages_data: List[PageData]
+    ) -> List[ChapterBoundary]:
+        """Detect chapters from structural changes in the document.
+
+        Args:
+            pages_data: List of processed page data.
+
+        Returns:
+            List of ChapterBoundary objects.
+        """
+        boundaries = []
+
+        if len(pages_data) < 2:
+            return boundaries
+
+        # Look for significant layout or text density changes
+        for i in range(1, len(pages_data)):
+            prev_page = pages_data[i - 1]
+            curr_page = pages_data[i]
+
+            # Check for layout change
+            if self._has_layout_change(prev_page, curr_page):
+                # Check if current page has large heading
+                headings = curr_page.text.get_large_font_elements(
+                    min_font_size=self.MIN_HEADING_FONT_SIZE
+                )
+                if headings:
+                    best_heading = max(headings, key=lambda h: h.font_size)
+                    boundaries.append(
+                        ChapterBoundary(
+                            chapter_number=0,
+                            page_number=curr_page.page_number,
+                            title=best_heading.text.strip(),
+                            heading_element=best_heading,
+                            is_detected_by="structure",
+                        )
+                    )
+
+            # Check for text density change (could indicate new chapter)
+            if self._has_density_change(prev_page, curr_page):
+                # Only add if not already detected by other methods
+                if not any(b.page_number == curr_page.page_number for b in boundaries):
+                    headings = curr_page.text.get_large_font_elements(
+                        min_font_size=self.MIN_HEADING_FONT_SIZE
+                    )
+                    if headings:
+                        best_heading = max(headings, key=lambda h: h.font_size)
+                        boundaries.append(
+                            ChapterBoundary(
+                                chapter_number=0,
+                                page_number=curr_page.page_number,
+                                title=best_heading.text.strip(),
+                                heading_element=best_heading,
+                                is_detected_by="density",
+                            )
+                        )
+
+        return boundaries
+
+    def _has_layout_change(self, prev_page: PageData, curr_page: PageData) -> bool:
+        """Check if there's a significant layout change between pages.
+
+        Args:
+            prev_page: Previous page data.
+            curr_page: Current page data.
+
+        Returns:
+            True if layout changed significantly.
+        """
+        # Check for change in number of columns (approximated by text regions)
+        if len(prev_page.layout.body_regions) != len(curr_page.layout.body_regions):
+            return True
+
+        # Check for change in page width/height (indicates different page type)
+        width_change = abs(prev_page.layout.width - curr_page.layout.width)
+        height_change = abs(prev_page.layout.height - curr_page.layout.height)
+
+        # More than 10% change is significant
+        if width_change > prev_page.layout.width * 0.1:
+            return True
+        if height_change > prev_page.layout.height * 0.1:
+            return True
+
+        return False
+
+    def _has_density_change(self, prev_page: PageData, curr_page: PageData) -> bool:
+        """Check if there's a significant text density change between pages.
+
+        Args:
+            prev_page: Previous page data.
+            curr_page: Current page data.
+
+        Returns:
+            True if text density changed significantly.
+        """
+        prev_density = prev_page.layout.text_density
+        curr_density = curr_page.layout.text_density
+
+        # If density is zero on one page but not the other
+        if (prev_density == 0) != (curr_density == 0):
+            return True
+
+        # More than 30% change is significant
+        if prev_density > 0 and curr_density > 0:
+            density_change = abs(prev_density - curr_density) / max(prev_density, curr_density)
+            return density_change > 0.3
+
+        return False
 
     def _is_chapter_pattern(self, text: str) -> bool:
         """Check if text matches a chapter pattern.
@@ -207,13 +342,13 @@ class ChapterDetector:
         return False
 
     def _is_likely_chapter_heading(
-        self, heading: TextElement, page_width: float
+        self, heading: TextElement, page_data: PageData
     ) -> bool:
         """Check if a heading is likely a chapter heading.
 
         Args:
             heading: Text element.
-            page_width: Page width.
+            page_data: Page data containing layout information.
 
         Returns:
             True if heading is likely a chapter heading.
@@ -227,12 +362,25 @@ class ChapterDetector:
             return False
 
         # Must be centered
-        if not heading.is_centered(page_width, self.center_tolerance):
+        if not heading.is_centered(page_data.layout.width, self.center_tolerance):
             return False
 
-        # Should be near top of page
-        # This is a simplified check; a real implementation would need
-        # page height to determine "near top"
+        # Must be near top of page (in top 20%)
+        top_threshold = page_data.layout.height * (1 - self.TOP_PAGE_RATIO)
+        # Note: PDF coordinates are from bottom-left, so top of page has higher y value
+        if heading.y1 < top_threshold:
+            return False
+
+        # Check if heading is significantly larger than other text on page
+        # Font size should be at least 1.3x the median font size
+        all_elements = page_data.text.elements
+        if all_elements:
+            font_sizes = [e.font_size for e in all_elements if e.font_size > 0]
+            if font_sizes:
+                median_font_size = sorted(font_sizes)[len(font_sizes) // 2]
+                if heading.font_size < median_font_size * 1.3:
+                    return False
+
         return True
 
     def _sort_and_deduplicate(self, boundaries: List[ChapterBoundary]) -> List[ChapterBoundary]:
@@ -260,13 +408,20 @@ class ChapterDetector:
                 seen_pages.add(boundary.page_number)
             else:
                 # Keep the one with better detection method
-                # Priority: outline > pattern > font_position
+                # Priority: outline > pattern > font_position > structure > density > position
                 existing = next(
                     (b for b in deduplicated if b.page_number == boundary.page_number),
                     None,
                 )
                 if existing:
-                    priority = {"outline": 3, "pattern": 2, "font_position": 1}
+                    priority = {
+                        "outline": 6,
+                        "pattern": 5,
+                        "font_position": 4,
+                        "structure": 3,
+                        "density": 2,
+                        "position": 1,
+                    }
                     if priority.get(boundary.is_detected_by, 0) > priority.get(
                         existing.is_detected_by, 0
                     ):

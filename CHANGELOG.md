@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TableFormatter: HTML table formatting as alternative to Markdown
 - TableFormatter: Cell grid building with rowspan/colspan support
 - Table class: is_empty(), get_header_cells(), has_header(), get_dimensions() methods
+- ChapterDetector: Additional chapter patterns (Appendix, Index, References, etc.)
+- ChapterDetector: Structure-based chapter detection (layout changes, density changes)
+- ChapterDetector: Page top position detection (top 20% of page)
+- ChapterDetector: Font size comparison (1.3x median) for visual hierarchy
 
 ### Changed
 - Image extraction now supports pypdf (no poppler required) as primary method
@@ -23,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edge text section now has single header (fixed duplication)
 - Table formatting with spaces in separator rows for better readability
 - MockTableCell tests use rowspan/colspan naming (consistent with production code)
+- MockLayout tests now include text_density and body_regions attributes
+- MockPageData tests now include proper PageData structure
+- Chapter detection now scores and selects best heading on each page
 
 ### Fixed
 - Edge text pollution in main content - page headers now properly filtered
@@ -30,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Image link paths in docs/ directory now correctly use ../assets/
 - Duplicate "## Edge Text" header in markdown output
 - TableFormatter test compatibility with MockTableCell attribute naming
+- test_summary.py mock dataclass mutable default values (edge_regions, images)
 
 ## [0.1.0] - 2026-04-20
 
