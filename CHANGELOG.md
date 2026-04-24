@@ -11,18 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pypdf>=3.0.0 dependency for improved image extraction
 - body_text property to PageData for edge text filtering
 - Filter methods to PageText for region-based text filtering
+- TableFormatter: Automatic column alignment detection (left/center/right)
+- TableFormatter: HTML table formatting as alternative to Markdown
+- TableFormatter: Cell grid building with rowspan/colspan support
+- Table class: is_empty(), get_header_cells(), has_header(), get_dimensions() methods
 
 ### Changed
 - Image extraction now supports pypdf (no poppler required) as primary method
 - Improved relative path calculation for image links in multi-file output
 - Summary extractors now use body_text instead of raw_text to exclude edge text
 - Edge text section now has single header (fixed duplication)
+- Table formatting with spaces in separator rows for better readability
+- MockTableCell tests use rowspan/colspan naming (consistent with production code)
 
 ### Fixed
 - Edge text pollution in main content - page headers now properly filtered
 - Checkpoint file path duplication (double directory names)
 - Image link paths in docs/ directory now correctly use ../assets/
 - Duplicate "## Edge Text" header in markdown output
+- TableFormatter test compatibility with MockTableCell attribute naming
 
 ## [0.1.0] - 2026-04-20
 

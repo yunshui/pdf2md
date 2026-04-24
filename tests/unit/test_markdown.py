@@ -17,8 +17,12 @@ class MockTableCell:
     text: str
     row: int
     col: int
-    row_span: int = 1
-    col_span: int = 1
+    rowspan: int = 1
+    colspan: int = 1
+
+    def is_empty(self) -> bool:
+        """Check if cell is empty."""
+        return not self.text or not self.text.strip()
 
 
 @dataclass
@@ -32,11 +36,25 @@ class MockTable:
         """Get cell at position."""
         for cell in self.cells:
             if (
-                cell.row <= row < cell.row + cell.row_span
-                and cell.col <= col < cell.col + cell.col_span
+                cell.row <= row < cell.row + cell.rowspan
+                and cell.col <= col < cell.col + cell.colspan
             ):
                 return cell
         return None
+
+    def get_row(self, row: int) -> List[MockTableCell]:
+        """Get all cells in a row."""
+        return [cell for cell in self.cells if cell.row == row]
+
+    def get_col(self, col: int) -> List[MockTableCell]:
+        """Get all cells in a column."""
+        return [cell for cell in self.cells if cell.col == col]
+
+    def is_empty(self) -> bool:
+        """Check if table has any content."""
+        if not self.cells:
+            return True
+        return all(cell.is_empty() for cell in self.cells)
 
 
 @dataclass
@@ -82,7 +100,7 @@ class TestTableFormatter:
         result = formatter.format_table(table)
         assert "| Header 1 | Header 2 |" in result
         assert "| Row 1 Col 1 | Row 1 Col 2 |" in result
-        assert "|---|" in result
+        assert "| --- |" in result  # Separator row
 
     def test_format_table_with_pipe(self):
         """Test formatting table with pipe characters (should be escaped)."""
@@ -161,8 +179,10 @@ class TestTableFormatter:
         table = MockTable(cells=cells, num_rows=2, num_cols=2)
 
         widths = formatter.calculate_column_widths(table)
-        assert widths[0] == max(5, 12)  # max("Short", "Medium text")
-        assert widths[1] == max(18, 4)  # max("A very long header", "Data")
+        # Column 0: max(len("Short"), len("Medium text")) = max(5, 11)
+        # Column 1: max(len("A very long header"), len("Data")) = max(18, 4)
+        assert widths[0] == max(5, 11)
+        assert widths[1] == max(18, 4)
 
     def test_calculate_column_widths_empty(self):
         """Test calculating widths for empty table."""
@@ -184,7 +204,7 @@ class TestTableFormatter:
         table = MockTable(cells=cells, num_rows=2, num_cols=2)
 
         result = formatter.format_with_alignment(table)
-        assert "---|" in result  # Left alignment indicator
+        assert "| --- |" in result  # Left alignment indicator with spaces
 
     def test_format_with_alignment_center(self):
         """Test formatting table with center alignment."""
@@ -217,9 +237,9 @@ class TestTableFormatter:
         result = formatter.format_with_alignment(
             table, alignments=["left", "center", "right"]
         )
-        assert "---|" in result
-        assert ":---:" in result
-        assert "---:" in result
+        assert "| --- |" in result  # Left alignment
+        assert ":---:" in result  # Center alignment
+        assert "---: |" in result  # Right alignment
 
 
 class TestLinker:

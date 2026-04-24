@@ -1,7 +1,7 @@
 """Table extraction from PDF pages."""
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import pdfplumber
 
@@ -74,6 +74,33 @@ class Table:
             List of cells in the column.
         """
         return [cell for cell in self.cells if cell.col == col]
+
+    def is_empty(self) -> bool:
+        """Check if table has any content."""
+        if not self.cells:
+            return True
+
+        return all(cell.is_empty() for cell in self.cells)
+
+    def get_header_cells(self) -> List[TableCell]:
+        """Get header cells (first row).
+
+        Returns:
+            List of header cells.
+        """
+        return self.get_row(0)
+
+    def has_header(self) -> bool:
+        """Check if table has a header."""
+        return self.num_rows > 0 and any(not cell.is_empty() for cell in self.get_row(0))
+
+    def get_dimensions(self) -> Tuple[int, int]:
+        """Get table dimensions.
+
+        Returns:
+            Tuple of (num_rows, num_cols).
+        """
+        return (self.num_rows, self.num_cols)
 
     def to_markdown(self) -> str:
         """Convert table to Markdown format.
