@@ -4,23 +4,29 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdf2md"
-version = "0.1.0"
-description = "A Python-based tool for converting PDF files to Markdown format"
+version = "0.1.1"
+description = "A Python-based tool for converting PDF files to Markdown format with multilingual OCR support"
 readme = "README.md"
 requires-python = ">=3.8"
-license = "MIT"
+license = {text = "MIT"}
 authors = [
     {name = "pdf2md Team"}
 ]
+keywords = ["pdf", "markdown", "ocr", "converter", "chinese", "english"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Markup",
+    "Topic :: Utilities",
 ]
 dependencies = [
     "pdfplumber>=0.10.0",
@@ -28,7 +34,15 @@ dependencies = [
     "paddleocr>=2.7.0",
     "Pillow>=10.0.0",
     "click>=8.1.0",
+    "pypdf>=3.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/yunshui/pdf2md"
+Documentation = "https://github.com/yunshui/pdf2md#readme"
+Repository = "https://github.com/yunshui/pdf2md"
+"Bug Tracker" = "https://github.com/yunshui/pdf2md/issues"
+Changelog = "https://github.com/yunshui/pdf2md/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]

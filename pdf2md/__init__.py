@@ -11,7 +11,7 @@ Example:
     >>> result = pipeline.process_file("/path/to/document.pdf")
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "pdf2md Team"
 __license__ = "MIT"
 __email__ = "noreply@example.com"

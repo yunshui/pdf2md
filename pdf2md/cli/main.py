@@ -88,7 +88,7 @@ logger = get_logger()
     default=False,
     help="Resume from checkpoint if available.",
 )
-@click.version_option(version="0.1.0", prog_name="pdf2md")
+@click.version_option(version="0.1.1", prog_name="pdf2md")
 def main(
     input_path: str,
     output_path: Optional[str],
@@ -116,7 +116,7 @@ def main(
     if verbose:
         logger.set_level("DEBUG")
 
-    logger.info("PDF to Markdown Converter v0.1.0")
+    logger.info("PDF to Markdown Converter v0.1.1")
     logger.info(f"Input: {input_path}")
 
     # Determine if OCR is enabled
