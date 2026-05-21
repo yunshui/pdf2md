@@ -71,6 +71,28 @@ def load_config(script_dir):
         )
         sys.exit(1)
 
+    # Validate value types.
+    type_checks = {
+        "api_url": str,
+        "client_id": str,
+        "max_retries": int,
+        "retry_delay": (int, float),
+        "timeout": (int, float),
+        "output_dir": str,
+        "log_dir": str,
+    }
+    bad_types = []
+    for key, expected_type in type_checks.items():
+        if not isinstance(config[key], expected_type):
+            bad_types.append(f"{key} (expected {expected_type.__name__}, got {type(config[key]).__name__})")
+    if bad_types:
+        print(
+            f"Error: Config file {config_path} has invalid value types: "
+            f"{', '.join(bad_types)}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     return config
 
 
@@ -92,6 +114,8 @@ def setup_logging(log_dir):
     log_file = os.path.join(log_dir, f"pdf2md-{today}.log")
 
     logger = logging.getLogger("pdf2md")
+    if logger.handlers:
+        logger.handlers.clear()
     logger.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter(
@@ -135,6 +159,11 @@ def main():
 
     # Load configuration.
     config = load_config(script_dir)
+
+    # Resolve relative paths (log_dir, output_dir) to script directory.
+    for key in ("log_dir", "output_dir"):
+        if not os.path.isabs(config[key]):
+            config[key] = os.path.join(script_dir, config[key])
 
     # Set up logging.
     logger = setup_logging(config["log_dir"])
