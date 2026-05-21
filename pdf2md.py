@@ -303,7 +303,14 @@ def main():
         logger.error("No files to process. Exiting.")
         sys.exit(1)
 
+    # Create output directory if needed.
+    os.makedirs(config["output_dir"], exist_ok=True)
+
+    success_count = 0
+    failure_count = 0
+
     for file_path in files:
+        file_ok = True
         try:
             file_size = os.path.getsize(file_path)
             encoded = file_to_base64(file_path)
@@ -315,6 +322,7 @@ def main():
             )
         except OSError as e:
             logger.error("Failed to read file %s: %s", file_path, e)
+            failure_count += 1
             continue
 
         # Call the conversion API with retry logic.
@@ -327,7 +335,6 @@ def main():
             if not md_items:
                 logger.warning("API returned no markdown content for %s", filename)
             output_dir = config["output_dir"]
-            os.makedirs(output_dir, exist_ok=True)
             for index, md_content in md_items:
                 try:
                     out_path = get_unique_path(output_dir, stem_name)
@@ -341,8 +348,22 @@ def main():
                     )
                 except OSError as e:
                     logger.error("Failed to write output for %s (index %s): %s", filename, index, e)
+                    file_ok = False
         else:
             logger.error("API call failed for %s after all retries", filename)
+            file_ok = False
+
+        if file_ok:
+            success_count += 1
+        else:
+            failure_count += 1
+
+    # Log summary and exit with appropriate code.
+    total = success_count + failure_count
+    logger.info("Processed %d files: %d success, %d failed", total, success_count, failure_count)
+    if failure_count > 0:
+        sys.exit(1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":
