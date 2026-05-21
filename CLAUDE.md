@@ -57,3 +57,20 @@ output/                # Generated markdown files (runtime)
 logs/                  # Log files (runtime)
 data/                  # Example input/output files
 ```
+
+## Documentation
+
+All project documentation is under `docs/spec/`:
+
+| Document | Purpose |
+|----------|---------|
+| [PRD](docs/spec/PRD.md) | Product requirements, user stories, feature specs |
+| [APP_FLOW](docs/spec/APP_FLOW.md) | Application flowcharts, retry logic, error matrix |
+| [TECH](docs/spec/TECH.md) | Technical architecture, design decisions, security |
+| [FRONTEND](docs/spec/FRONTEND.md) | CLI interface spec, output examples, exit codes |
+| [BACKEND](docs/spec/BACKEND.md) | External API contract, local processing, logging |
+| [IMPLEMENTATION_PLAN](docs/spec/IMPLEMENTATION_PLAN.md) | Implementation phases, test strategy, decisions log |
+| [PROGRESS](docs/spec/PROGRESS.md) | Timeline, task status, metrics, open issues |
+| [LESSON](docs/spec/LESSON.md) | Lessons learned, reusable patterns, suggestions |
+
+Also see: `docs/superpowers/specs/` (design spec), `docs/superpowers/plans/` (implementation plan).

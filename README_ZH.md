@@ -70,3 +70,16 @@ python pdf2md.py report.pdf
 # 转换目录下所有支持的文件
 python pdf2md.py ./documents/
 ```
+
+## 项目文档
+
+| 文档 | 说明 |
+|------|------|
+| [PRD](docs/spec/PRD.md) | 产品需求文档：产品概述、用户故事、功能需求、API 契约 |
+| [APP_FLOW](docs/spec/APP_FLOW.md) | 应用流程文档：完整流程图、重试流程、错误处理矩阵 |
+| [TECH](docs/spec/TECH.md) | 技术架构文档：技术选型、架构总览、模块说明、设计决策 |
+| [FRONTEND](docs/spec/FRONTEND.md) | 前端规范文档：CLI 接口定义、输出示例、退出码说明 |
+| [BACKEND](docs/spec/BACKEND.md) | 后端规范文档：API 接口规范、本地处理逻辑、日志系统 |
+| [IMPLEMENTATION_PLAN](docs/spec/IMPLEMENTATION_PLAN.md) | 实施计划文档：实施阶段、变更清单、测试策略 |
+| [PROGRESS](docs/spec/PROGRESS.md) | 进度文档：项目时间线、任务完成情况、关键指标 |
+| [LESSON](docs/spec/LESSON.md) | 经验总结文档：经验教训、可复用模式、改进建议 |

@@ -60,3 +60,16 @@ pdf2md/
 ├── output/                # Generated markdown files (runtime)
 └── logs/                  # Log files (runtime)
 ```
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [PRD](docs/spec/PRD.md) | Product requirements, user stories, feature specifications |
+| [APP_FLOW](docs/spec/APP_FLOW.md) | Application flow, retry logic, error handling matrix |
+| [TECH](docs/spec/TECH.md) | Technical architecture, module descriptions, design decisions |
+| [FRONTEND](docs/spec/FRONTEND.md) | CLI interface specification, output examples, exit codes |
+| [BACKEND](docs/spec/BACKEND.md) | External API contract, local processing logic, logging system |
+| [IMPLEMENTATION_PLAN](docs/spec/IMPLEMENTATION_PLAN.md) | Implementation phases, change log, test strategy |
+| [PROGRESS](docs/spec/PROGRESS.md) | Project timeline, task completion status, metrics |
+| [LESSON](docs/spec/LESSON.md) | Lessons learned, reusable patterns, improvement suggestions |
