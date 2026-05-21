@@ -29,6 +29,65 @@ DEFAULT_CONFIG = {
     "log_dir": "logs",
 }
 
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
+
+
+def resolve_files(path, logger):
+    """Resolve a path to a list of files with supported extensions.
+
+    If path is a file with a supported extension, return it in a list.
+    If path is a file with an unsupported extension, log a warning and
+    return an empty list.
+    If path is a directory, glob for supported extensions and return a
+    sorted list of matching files.
+
+    Args:
+        path: A file or directory path string.
+        logger: A logging.Logger instance.
+
+    Returns:
+        list: A list of resolved file paths (possibly empty).
+    """
+    if os.path.isfile(path):
+        ext = os.path.splitext(path)[1].lower()
+        if ext in SUPPORTED_EXTENSIONS:
+            return [path]
+        logger.warning(
+            "File has unsupported extension '%s': %s", ext, path
+        )
+        return []
+
+    if os.path.isdir(path):
+        patterns = [os.path.join(path, f"*{ext}") for ext in SUPPORTED_EXTENSIONS]
+        files = []
+        for pattern in patterns:
+            files.extend(glob.glob(pattern))
+        files = sorted(set(files))
+        if not files:
+            logger.warning("No supported files found in directory: %s", path)
+        return files
+
+    logger.warning("Path is neither a file nor a directory: %s", path)
+    return []
+
+
+def file_to_base64(file_path, logger):
+    """Read a file and return its base64-encoded content.
+
+    Args:
+        file_path: Path to the file to encode.
+        logger: A logging.Logger instance.
+
+    Returns:
+        str: The base64-encoded content of the file.
+
+    Raises:
+        OSError: If the file cannot be read.
+    """
+    with open(file_path, "rb") as f:
+        content = f.read()
+    return base64.b64encode(content).decode("ascii")
+
 
 def load_config(script_dir):
     """Load configuration from conf/setting.json relative to script location.
@@ -171,8 +230,25 @@ def main():
     logger.info("pdf2md started. Config loaded from conf/setting.json")
     logger.debug("Configuration: %s", json.dumps(config))
 
-    # TODO: implement PDF-to-Markdown conversion workflow.
+    # Resolve files and encode them in base64.
     logger.info("Processing path: %s", args.path)
+    files = resolve_files(args.path, logger)
+    logger.info("Found %d file(s) to process.", len(files))
+    if not files:
+        logger.error("No files to process. Exiting.")
+        sys.exit(1)
+
+    for file_path in files:
+        try:
+            encoded = file_to_base64(file_path, logger)
+            logger.info(
+                "Encoded %s (%d bytes, base64 size: %d).",
+                file_path,
+                os.path.getsize(file_path),
+                len(encoded),
+            )
+        except OSError as e:
+            logger.error("Failed to read file %s: %s", file_path, e)
 
 
 if __name__ == "__main__":
