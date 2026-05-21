@@ -324,18 +324,23 @@ def main():
             logger.info("API call succeeded for %s", filename)
             stem_name = os.path.splitext(filename)[0]
             md_items = extract_md_content(result)
+            if not md_items:
+                logger.warning("API returned no markdown content for %s", filename)
             output_dir = config["output_dir"]
             os.makedirs(output_dir, exist_ok=True)
             for index, md_content in md_items:
-                out_path = get_unique_path(output_dir, stem_name)
-                with open(out_path, "w", encoding="utf-8") as f:
-                    f.write(md_content)
-                out_size = os.path.getsize(out_path)
-                out_basename = os.path.basename(out_path)
-                logger.info(
-                    "Wrote output %s (%d bytes) for %s (index %s)",
-                    out_basename, out_size, filename, index,
-                )
+                try:
+                    out_path = get_unique_path(output_dir, stem_name)
+                    with open(out_path, "w", encoding="utf-8") as f:
+                        f.write(md_content)
+                    out_size = os.path.getsize(out_path)
+                    out_basename = os.path.basename(out_path)
+                    logger.info(
+                        "Wrote output %s (%d bytes) for %s (index %s)",
+                        out_basename, out_size, filename, index,
+                    )
+                except OSError as e:
+                    logger.error("Failed to write output for %s (index %s): %s", filename, index, e)
         else:
             logger.error("API call failed for %s after all retries", filename)
 
