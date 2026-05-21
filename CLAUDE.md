@@ -74,3 +74,10 @@ All project documentation is under `docs/spec/`:
 | [LESSON](docs/spec/LESSON.md) | Lessons learned, reusable patterns, suggestions |
 
 Also see: `docs/superpowers/specs/` (design spec), `docs/superpowers/plans/` (implementation plan).
+
+## Skills
+
+| Skill | Purpose |
+|-------|---------|
+| [skills/pdf2md/SKILL.md](skills/pdf2md/SKILL.md) | pdf2md CLI usage guide, API contract, error scenarios, dev workflow |
+| [skills/update-docs/SKILL.md](skills/update-docs/SKILL.md) | Auto-update project documentation after code changes |
