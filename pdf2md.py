@@ -211,7 +211,8 @@ def load_config(script_dir):
     bad_types = []
     for key, expected_type in type_checks.items():
         if not isinstance(config[key], expected_type):
-            bad_types.append(f"{key} (expected {expected_type.__name__}, got {type(config[key]).__name__})")
+            type_name = '/'.join(t.__name__ for t in expected_type) if isinstance(expected_type, tuple) else expected_type.__name__
+            bad_types.append(f"{key} (expected {type_name}, got {type(config[key]).__name__})")
     if bad_types:
         print(
             f"Error: Config file {config_path} has invalid value types: "
