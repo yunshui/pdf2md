@@ -100,30 +100,30 @@ def call_api(config, logger, base64_content, file_name):
     timeout = config["timeout"]
 
     for attempt in range(1, max_retries + 1):
-        logger.info(f"Calling API for {file_name} (attempt {attempt}/{max_retries})")
+        logger.info("Calling API for %s (attempt %d/%d)", file_name, attempt, max_retries)
         start = time.time()
         try:
             resp = requests.post(url, json=body, headers=headers, timeout=timeout)
             elapsed = time.time() - start
 
             if resp.status_code != 200:
-                logger.error(f"HTTP {resp.status_code} after {elapsed:.1f}s (attempt {attempt})")
+                logger.error("HTTP %d after %.1fs (attempt %d)", resp.status_code, elapsed, attempt)
                 if attempt < max_retries:
                     time.sleep(config["retry_delay"])
                     continue
                 return None
 
             data = resp.json()
-            logger.info(f"API response in {elapsed:.1f}s, status={data.get('status')}")
+            logger.info("API response in %.1fs, status=%s", elapsed, data.get("status"))
             return data
 
-        except requests.exceptions.JSONDecodeError:
+        except (requests.exceptions.JSONDecodeError, ValueError):
             elapsed = time.time() - start
-            logger.error(f"Invalid JSON response after {elapsed:.1f}s (no retry)")
+            logger.error("Invalid JSON response after %.1fs (no retry)", elapsed)
             return None
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             elapsed = time.time() - start
-            logger.error(f"Request failed after {elapsed:.1f}s: {e} (attempt {attempt})")
+            logger.error("Request failed after %.1fs: %s (attempt %d)", elapsed, e, attempt)
             if attempt < max_retries:
                 time.sleep(config["retry_delay"])
                 continue
