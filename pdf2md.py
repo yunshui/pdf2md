@@ -132,6 +132,28 @@ def call_api(config, logger, base64_content, file_name):
     return None
 
 
+def extract_md_content(response_data):
+    """Extract markdown content from API response. Returns list of (index, content) tuples."""
+    results = response_data.get("results", {})
+    items = []
+    for key, val in results.items():
+        content = val.get("md_content", "")
+        items.append((key, content))
+    return items
+
+
+def get_unique_path(output_dir, base_name):
+    """Return unique file path. If file exists, append _<5 random chars> and retry on collision."""
+    path = os.path.join(output_dir, f"{base_name}.md")
+    if not os.path.exists(path):
+        return path
+    chars = string.ascii_lowercase
+    while os.path.exists(path):
+        suffix = ''.join(random.choice(chars) for _ in range(5))
+        path = os.path.join(output_dir, f"{base_name}_{suffix}.md")
+    return path
+
+
 def load_config(script_dir):
     """Load configuration from conf/setting.json relative to script location.
 
@@ -300,6 +322,20 @@ def main():
         result = call_api(config, logger, encoded, filename)
         if result is not None:
             logger.info("API call succeeded for %s", filename)
+            stem_name = os.path.splitext(filename)[0]
+            md_items = extract_md_content(result)
+            output_dir = config["output_dir"]
+            os.makedirs(output_dir, exist_ok=True)
+            for index, md_content in md_items:
+                out_path = get_unique_path(output_dir, stem_name)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(md_content)
+                out_size = os.path.getsize(out_path)
+                out_basename = os.path.basename(out_path)
+                logger.info(
+                    "Wrote output %s (%d bytes) for %s (index %s)",
+                    out_basename, out_size, filename, index,
+                )
         else:
             logger.error("API call failed for %s after all retries", filename)
 
