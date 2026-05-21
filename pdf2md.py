@@ -71,12 +71,11 @@ def resolve_files(path, logger):
     return []
 
 
-def file_to_base64(file_path, logger):
+def file_to_base64(file_path):
     """Read a file and return its base64-encoded content.
 
     Args:
         file_path: Path to the file to encode.
-        logger: A logging.Logger instance.
 
     Returns:
         str: The base64-encoded content of the file.
@@ -240,7 +239,7 @@ def main():
 
     for file_path in files:
         try:
-            encoded = file_to_base64(file_path, logger)
+            encoded = file_to_base64(file_path)
             logger.info(
                 "Encoded %s (%d bytes, base64 size: %d).",
                 file_path,
