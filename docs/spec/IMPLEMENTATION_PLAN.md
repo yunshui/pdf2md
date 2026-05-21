@@ -68,19 +68,32 @@
 | 5.5 | 创建 `.gitignore` | 忽略运行时目录 |
 | 5.6 | 更新 `CLAUDE.md` | 项目文档 |
 
+### 阶段 6: 测试与 Skill（已完成）
+
+| 步骤 | 内容 | 产出 |
+|------|------|------|
+| 6.1 | 创建测试套件 | tests/test_pdf2md.py (34 tests) |
+| 6.2 | 修复类型校验错误 | load_config 的 tuple 类型名处理 |
+| 6.3 | 修复集成测试隔离 | 模拟 load_config 避免读取磁盘配置 |
+| 6.4 | 创建 pdf2md skill | skills/pdf2md/SKILL.md |
+| 6.5 | 重构 skill 结构 | 移至 skills/pdf2md/scripts/ 目录 |
+
 ---
 
 ## 3. 文件变更清单
 
 | 文件 | 操作 | 行数 | 说明 |
 |------|------|------|------|
-| `pdf2md.py` | 新建 | 373 | 主程序，包含所有业务逻辑 |
+| `pdf2md.py` | 新建 | 374 | 主程序，包含所有业务逻辑 |
 | `conf/setting.json` | 新建 | 10 | 默认配置 |
 | `requirements.txt` | 新建 | 1 | Python 依赖（requests） |
+| `requirements-dev.txt` | 新建 | 1 | 开发依赖（pytest） |
 | `.gitignore` | 新建 | 6 | Git 忽略规则 |
 | `CLAUDE.md` | 新建 | 59 | 项目指南 |
 | `README.md` | 新建 | 67 | 英文说明 |
 | `README_ZH.md` | 新建 | 67 | 中文说明 |
+| `tests/test_pdf2md.py` | 新建 | 540 | 测试套件（34 个测试） |
+| `skills/pdf2md/SKILL.md` | 新建 | ~150 | pdf2md skill 文档 |
 
 ---
 
@@ -112,15 +125,15 @@
 | 文件名冲突 | 生成带随机后缀的文件名 | 通过 |
 | 配置文件缺失 | 自动创建默认配置 | 通过 |
 
-### 5.2 待补充的自动化测试
+### 5.2 自动化测试（已完成，34 个全部通过）
 
-- [ ] `load_config()` 单元测试（缺失文件、无效 JSON、缺少字段、类型错误）
-- [ ] `resolve_files()` 单元测试（文件、目录、空目录、不支持格式）
-- [ ] `file_to_base64()` 单元测试（正常读取、文件不存在）
-- [ ] `call_api()` 单元测试（成功、失败、重试、超时、JSON 错误）
-- [ ] `extract_md_content()` 单元测试（正常、空结果、缺少字段、异常类型）
-- [ ] `get_unique_path()` 单元测试（无冲突、单冲突、多冲突）
-- [ ] `main()` 集成测试（全流程）
+- [x] `load_config()` 单元测试（5 个：缺失文件、无效 JSON、缺少字段、类型错误、正常加载）
+- [x] `resolve_files()` 单元测试（5 个：文件、目录、空目录、不支持格式、大小写）
+- [x] `file_to_base64()` 单元测试（3 个：正常、不存在、空文件）
+- [x] `call_api()` 单元测试（7 个：成功、重试、超时、JSON 错误、连接错误、日志记录）
+- [x] `extract_md_content()` 单元测试（6 个：正常、多结果、空、缺字段、类型保护）
+- [x] `get_unique_path()` 单元测试（4 个：无冲突、冲突、多冲突、后缀格式）
+- [x] `main()` 集成测试（4 个：无参数、不存在路径、API 成功、API 失败）
 
 ---
 
