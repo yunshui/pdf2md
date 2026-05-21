@@ -5,17 +5,18 @@ This script accepts a PDF, DOCX, DOC, or TXT file or directory, sends them to a
 remote conversion API, and saves the resulting Markdown output.
 """
 
-import sys
-import os
-import json
-import logging
 import argparse
 import base64
-import time
-import random
-import string
 import datetime
 import glob
+import json
+import logging
+import os
+import random
+import string
+import sys
+import time
+
 import requests
 
 
@@ -121,7 +122,7 @@ def call_api(config, logger, base64_content, file_name):
             elapsed = time.time() - start
             logger.error("Invalid JSON response after %.1fs (no retry)", elapsed)
             return None
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        except requests.exceptions.RequestException as e:
             elapsed = time.time() - start
             logger.error("Request failed after %.1fs: %s (attempt %d)", elapsed, e, attempt)
             if attempt < max_retries:
@@ -137,6 +138,8 @@ def extract_md_content(response_data):
     results = response_data.get("results", {})
     items = []
     for key, val in results.items():
+        if not isinstance(val, dict):
+            continue
         content = val.get("md_content", "")
         items.append((key, content))
     return items
