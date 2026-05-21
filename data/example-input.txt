@@ -1,0 +1,6 @@
+curl --location --request POST 'http://123.192.49.73:8000/convert2markdown' \
+--header 'client_id: bf-mkd' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+"files":["PDF文件的base64编码"]
+}'
