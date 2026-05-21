@@ -88,6 +88,50 @@ def file_to_base64(file_path):
     return base64.b64encode(content).decode("ascii")
 
 
+def call_api(config, logger, base64_content, file_name):
+    """POST file to conversion API with retry. Returns response dict or None on failure."""
+    url = config["api_url"]
+    headers = {
+        "client_id": config["client_id"],
+        "Content-Type": "application/json",
+    }
+    body = {"files": [base64_content]}
+    max_retries = config["max_retries"]
+    timeout = config["timeout"]
+
+    for attempt in range(1, max_retries + 1):
+        logger.info(f"Calling API for {file_name} (attempt {attempt}/{max_retries})")
+        start = time.time()
+        try:
+            resp = requests.post(url, json=body, headers=headers, timeout=timeout)
+            elapsed = time.time() - start
+
+            if resp.status_code != 200:
+                logger.error(f"HTTP {resp.status_code} after {elapsed:.1f}s (attempt {attempt})")
+                if attempt < max_retries:
+                    time.sleep(config["retry_delay"])
+                    continue
+                return None
+
+            data = resp.json()
+            logger.info(f"API response in {elapsed:.1f}s, status={data.get('status')}")
+            return data
+
+        except requests.exceptions.JSONDecodeError:
+            elapsed = time.time() - start
+            logger.error(f"Invalid JSON response after {elapsed:.1f}s (no retry)")
+            return None
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            elapsed = time.time() - start
+            logger.error(f"Request failed after {elapsed:.1f}s: {e} (attempt {attempt})")
+            if attempt < max_retries:
+                time.sleep(config["retry_delay"])
+                continue
+            return None
+
+    return None
+
+
 def load_config(script_dir):
     """Load configuration from conf/setting.json relative to script location.
 
@@ -249,6 +293,15 @@ def main():
             )
         except OSError as e:
             logger.error("Failed to read file %s: %s", file_path, e)
+            continue
+
+        # Call the conversion API with retry logic.
+        filename = os.path.basename(file_path)
+        result = call_api(config, logger, encoded, filename)
+        if result is not None:
+            logger.info("API call succeeded for %s", filename)
+        else:
+            logger.error("API call failed for %s after all retries", filename)
 
 
 if __name__ == "__main__":
