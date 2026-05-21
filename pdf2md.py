@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""pdf2md - Convert PDF files to Markdown via a remote conversion API.
+"""pdf2md - Convert PDF and document files to Markdown via a remote conversion API.
 
-This script accepts a PDF file or directory of PDFs, sends them to a
+This script accepts a PDF, DOCX, DOC, or TXT file or directory, sends them to a
 remote conversion API, and saves the resulting Markdown output.
 """
 
@@ -199,11 +199,11 @@ def setup_logging(log_dir):
 def main():
     """Entry point: parse arguments, load config, set up logging, and run."""
     parser = argparse.ArgumentParser(
-        description="Convert PDF files to Markdown via a remote conversion API.",
+        description="Convert PDF, DOCX, DOC, and TXT files to Markdown via a remote conversion API.",
     )
     parser.add_argument(
         "path",
-        help="Path to a PDF file or directory containing PDF files.",
+        help="Path to a PDF/DOCX/DOC/TXT file or directory containing such files.",
     )
     args = parser.parse_args()
 
@@ -239,11 +239,12 @@ def main():
 
     for file_path in files:
         try:
+            file_size = os.path.getsize(file_path)
             encoded = file_to_base64(file_path)
             logger.info(
                 "Encoded %s (%d bytes, base64 size: %d).",
                 file_path,
-                os.path.getsize(file_path),
+                file_size,
                 len(encoded),
             )
         except OSError as e:
