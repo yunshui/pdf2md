@@ -1,3 +1,8 @@
+---
+name: update-docs
+description: Auto-update project documentation to reflect recent code changes
+---
+
 # update-docs - Auto Update Project Documentation
 
 **Type**: Maintenance skill

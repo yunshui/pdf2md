@@ -1,3 +1,8 @@
+---
+name: pdf2md
+description: Convert PDF, DOCX, DOC, or TXT files to Markdown via a remote API
+---
+
 # pdf2md - PDF/Document to Markdown Converter
 
 **Type**: CLI tool skill (portable, self-contained)
