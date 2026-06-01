@@ -172,7 +172,7 @@ LLM 摘要文本
 
 ### 5.3 分页处理模式
 
-**决策**: 使用 `start_page_id` / `end_page_id` 分页请求。PDF 文件通过 pypdf 读取总页数后按页数终止；非 PDF 文件以空 `results` 作为终止信号。
+**决策**: 使用 `start_page_id` / `end_page_id` 分页请求。PDF 文件通过 PyMuPDF 读取总页数后按页数终止；非 PDF 文件以空 `results` 作为终止信号。
 
 **理由**:
 - 避免单次请求过大导致超时

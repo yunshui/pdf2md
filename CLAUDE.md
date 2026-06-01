@@ -54,7 +54,7 @@ Config file: `conf/setting.json` (created with defaults on first run if missing)
 ### Paginated Parse API (`/file_parse`)
 - **Request**: `POST {api_url}` with header `client_id: {client_id}`, multipart form-data: `files` (binary file), `start_page_id`, `end_page_id`
 - **Response**: JSON with `status`, `results` dict containing `md_content` per item
-- **Termination (PDF)**: When `start_page >= total_pages` (read via pypdf)
+- **Termination (PDF)**: When `start_page >= total_pages` (read via PyMuPDF)
 - **Termination (non-PDF)**: Empty `results` (`{}`) means no more content
 
 ### LLM Summarize API (`/v1/chat/completions`)

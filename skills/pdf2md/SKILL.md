@@ -129,7 +129,7 @@ File: `conf/setting.json` (auto-created with defaults on first run, relative to 
   - `start_page_id`: starting page number (0-based string)
   - `end_page_id`: ending page number (0-based string)
 - **Response**: JSON with `status`, `results` dict containing `md_content` per item
-- **Termination (PDF)**: When `start_page >= total_pages` (read from file via pypdf)
+- **Termination (PDF)**: When `start_page >= total_pages` (read from file via PyMuPDF)
 - **Termination (non-PDF)**: Empty `results` (`{}`) means no more content
 
 ```json

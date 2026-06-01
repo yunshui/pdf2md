@@ -201,7 +201,7 @@ def get_unique_dir(parent_dir, stem_name):
 2. 如果目录已存在，生成 5 位随机小写字母后缀（如 `report_md_abcde`）
 
 **chunk 文件**:
-- 命名格式: `{stem_name}_{start}-{end}.md`（如 `report_0-4.md`）
+- 命名格式: `{stem_name}_{start}-{end}.md`（如 `report_0-9.md`）
 - 使用 UTF-8 编码写入
 
 **summary 文件**:
@@ -264,10 +264,12 @@ def get_unique_dir(parent_dir, stem_name):
 | 找到文件 | INFO | `Found 3 file(s) to process.` |
 | 文件处理中 | INFO | `Processing report.pdf (1048576 bytes)` |
 | 输出目录创建 | INFO | `Output directory: output/report_md` |
-| API 调用中 | INFO | `Calling API for report.pdf pages 0-4 (attempt 1/3)` |
+| PDF 页数读取 | INFO | `PDF page count for report.pdf: 24` |
+| API 调用中 | INFO | `Calling API for report.pdf pages 0-9 (attempt 1/3)` |
 | API 成功 | INFO | `API response in 5.2s, status=completed` |
-| 写入 chunk | INFO | `Wrote output report_0-4.md (5230 bytes) for report.pdf` |
-| 分页终止 | INFO | `No more content from API for report.pdf at pages 5-9` |
+| 写入 chunk | INFO | `Wrote output report_0-9.md (5230 bytes) for report.pdf` |
+| 分页终止（PDF） | INFO | `Reached end of PDF (24 pages) for report.pdf; stopping pagination.` |
+| 分页终止（非 PDF） | INFO | `No more content from API for report.txt at pages 10-19` |
 | 调用摘要 | INFO | `Calling summarize API (attempt 1/3)` |
 | 摘要返回 | INFO | `Summarize API returned 350 chars` |
 | 写入摘要 | INFO | `Wrote summary file output/report_md/report.md` |
