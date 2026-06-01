@@ -33,9 +33,9 @@ python pdf2md.py <文件或目录路径>
 | `output_dir` | `output` | Markdown 输出目录 |
 | `log_dir` | `logs` | 日志存储目录 |
 | `page_num` | `5` | 每批处理页数 |
-| `summarize_api_url` | `http://127.0.0.1:8000/v1/chat/completions` | LLM 摘要 API 地址 |
-| `summarize_api_key` | `""` | LLM API 密钥（可选） |
-| `summarize_model` | `gpt-4o` | LLM 模型名称 |
+| `summarize_api_url` | `http://123.192.49.9:8086/v1/chat/completions` | LLM 摘要 API 地址 |
+| `summarize_api_key` | `"123"` | LLM API 密钥（可选） |
+| `summarize_model` | `qwen3.5` | LLM 模型名称 |
 | `summarize_prompt` | *(内置模板)* | LLM 摘要提示模板 |
 
 ## 输出文件

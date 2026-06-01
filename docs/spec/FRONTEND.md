@@ -143,9 +143,9 @@ python pdf2md.py data/example-output.json
   "output_dir": "output",
   "log_dir": "logs",
   "page_num": 5,
-  "summarize_api_url": "http://127.0.0.1:8000/v1/chat/completions",
-  "summarize_api_key": "",
-  "summarize_model": "gpt-4o",
+  "summarize_api_url": "http://123.192.49.9:8086/v1/chat/completions",
+  "summarize_api_key": "123",
+  "summarize_model": "qwen3.5",
   "summarize_prompt": "You are a document summarization assistant..."
 }
 ```

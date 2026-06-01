@@ -37,9 +37,9 @@ Config file: `conf/setting.json` (created with defaults on first run if missing)
 | `output_dir` | `output` | Output directory for `.md` files |
 | `log_dir` | `logs` | Log directory |
 | `page_num` | `5` | Pages per API request |
-| `summarize_api_url` | `http://127.0.0.1:8000/v1/chat/completions` | LLM summary API endpoint |
-| `summarize_api_key` | `""` | LLM API key (optional) |
-| `summarize_model` | `gpt-4o` | LLM model name |
+| `summarize_api_url` | `http://123.192.49.9:8086/v1/chat/completions` | LLM summary API endpoint |
+| `summarize_api_key` | `"123"` | LLM API key (optional) |
+| `summarize_model` | `qwen3.5` | LLM model name |
 | `summarize_prompt` | *(built-in template)* | LLM summary prompt template |
 
 ## Output and Logs
