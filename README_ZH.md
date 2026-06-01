@@ -57,14 +57,26 @@ output/
 ```markdown
 # report Summary
 
-> AI-generated summary
-
-{LLM 生成的摘要文本}
+> AI-generated summary per page range
 
 ## Page Chunks
 
 - [report_0-9.md](report_0-9.md)
 - [report_10-19.md](report_10-19.md)
+
+## Summaries
+
+### Pages 0-9
+
+{第 0-9 页的 LLM 摘要}
+
+[View full content](report_0-9.md)
+
+### Pages 10-19
+
+{第 10-19 页的 LLM 摘要}
+
+[View full content](report_10-19.md)
 ```
 
 ## 日志文件

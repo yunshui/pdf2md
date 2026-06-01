@@ -86,17 +86,21 @@ python pdf2md.py data/example-output.json
 [2026-06-01 10:00:00] INFO   Calling API for report.pdf pages 0-9 (attempt 1/3)
 [2026-06-01 10:00:05] INFO   API response in 5.2s, status=completed
 [2026-06-01 10:00:05] INFO   Wrote output report_0-9.md (5230 bytes) for report.pdf
-[2026-06-01 10:00:05] INFO   Calling API for report.pdf pages 10-19 (attempt 1/3)
-[2026-06-01 10:00:06] INFO   API response in 1.0s, status=completed
-[2026-06-01 10:00:06] INFO   Wrote output report_10-19.md (4800 bytes) for report.pdf
-[2026-06-01 10:00:06] INFO   Calling API for report.pdf pages 20-23 (attempt 1/3)
-[2026-06-01 10:00:07] INFO   API response in 0.8s, status=completed
-[2026-06-01 10:00:07] INFO   Wrote output report_20-23.md (2100 bytes) for report.pdf
-[2026-06-01 10:00:07] INFO   Reached end of PDF (24 pages) for report.pdf; stopping pagination.
-[2026-06-01 10:00:06] INFO   Calling summarize API (attempt 1/3)
-[2026-06-01 10:00:10] INFO   Summarize API returned 350 chars
-[2026-06-01 10:00:10] INFO   Wrote summary file output/report_md/report.md
-[2026-06-01 10:00:10] INFO   Processed 1 files: 1 success, 0 failed
+[2026-06-01 10:00:05] INFO   Calling summarize API (attempt 1/3)
+[2026-06-01 10:00:08] INFO   Summarize API returned 180 chars
+[2026-06-01 10:00:08] INFO   Calling API for report.pdf pages 10-19 (attempt 1/3)
+[2026-06-01 10:00:09] INFO   API response in 1.0s, status=completed
+[2026-06-01 10:00:09] INFO   Wrote output report_10-19.md (4800 bytes) for report.pdf
+[2026-06-01 10:00:09] INFO   Calling summarize API (attempt 1/3)
+[2026-06-01 10:00:12] INFO   Summarize API returned 200 chars
+[2026-06-01 10:00:12] INFO   Calling API for report.pdf pages 20-23 (attempt 1/3)
+[2026-06-01 10:00:13] INFO   API response in 0.8s, status=completed
+[2026-06-01 10:00:13] INFO   Wrote output report_20-23.md (2100 bytes) for report.pdf
+[2026-06-01 10:00:13] INFO   Calling summarize API (attempt 1/3)
+[2026-06-01 10:00:15] INFO   Summarize API returned 120 chars
+[2026-06-01 10:00:15] INFO   Reached end of PDF (24 pages) for report.pdf; stopping pagination.
+[2026-06-01 10:00:15] INFO   Wrote summary file output/report_md/report.md
+[2026-06-01 10:00:15] INFO   Processed 1 files: 1 success, 0 failed
 ```
 
 ### 3.2 失败重试输出

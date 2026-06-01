@@ -46,8 +46,9 @@ Config file: `conf/setting.json` (created with defaults on first run if missing)
 ## Output and Logs
 
 - **Output**: Each file gets a `{stem_name}_md/` directory under `output/`, containing:
-  - `{stem_name}.md` — LLM-generated summary with links to chunks
+  - `{stem_name}.md` — per-chunk summaries with links to each chunk file
   - `{stem_name}_{start}-{end}.md` — per-page-range markdown files
+- Each chunk is summarized separately by the LLM (avoids exceeding context limits)
 - **Logs**: `logs/pdf2md-YYYYMMDD.log` — daily rotation, includes timing, attempt counts, errors.
 
 ## API Contract

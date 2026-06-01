@@ -51,9 +51,8 @@ DEFAULT_CONFIG = {
     "summarize_timeout": 200,
     "summarize_prompt": (
         "You are a document summarization assistant. Given the following markdown "
-        "content from different page ranges of a document, create a concise summary "
-        "(within 500 words). Include key points and important details. For specifics, "
-        "refer to the individual page files.\n\n{chunks_info}\n\nSummary:"
+        "content, create a concise summary (within 500 words). Include key points "
+        "and important details.\n\n{content}\n\nSummary:"
     ),
 }
 
@@ -150,8 +149,8 @@ def call_file_parse_api(config, logger, file_path, start_page, end_page, file_na
     return None
 
 
-def call_summarize_api(config, logger, chunks_info):
-    """Call LLM summarization API. Returns summary text or empty string on failure."""
+def call_summarize_api(config, logger, content):
+    """Call LLM summarization API for a single chunk. Returns summary text or empty string on failure."""
     url = config["summarize_api_url"]
     api_key = config["summarize_api_key"]
     model = config["summarize_model"]
@@ -160,7 +159,7 @@ def call_summarize_api(config, logger, chunks_info):
     timeout = config["timeout"]
     summarize_timeout = config.get("summarize_timeout", 200)
 
-    prompt = prompt_template.format(chunks_info=chunks_info)
+    prompt = prompt_template.format(content=content)
     body = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -411,7 +410,7 @@ def main():
         logger.info("Output directory: %s", file_output_dir)
 
         # Paginated API calls
-        chunk_ranges = []  # List of (start, end, md_content)
+        chunk_ranges = []  # List of (start, end, chunk_file, summary)
         start_page = 0
 
         # For PDF files, get total page count to determine when to stop
@@ -462,33 +461,35 @@ def main():
                 file_ok = False
                 break
 
-            chunk_ranges.append((start_page, end_page, chunk_basename, chunk_md))
+            chunk_file = f"{chunk_basename}.md"
+
+            # Summarize this chunk separately
+            summary_text = call_summarize_api(config, logger, chunk_md)
+
+            chunk_ranges.append((start_page, end_page, chunk_file, summary_text))
             start_page = end_page + 1
 
         if not file_ok:
             failure_count += 1
             continue
 
-        # Build chunks_info for summarization
-        chunks_info_parts = [
-            f"### Pages {s}-{e}\n\n{md}" for s, e, _, md in chunk_ranges
-        ]
-        chunks_info = "\n\n---\n\n".join(chunks_info_parts)
-
-        # Call summarize API
-        summary_text = call_summarize_api(config, logger, chunks_info)
-
-        # Write summary file: {stem_name}.md
+        # Write summary file: {stem_name}.md with per-chunk summaries and links
         summary_path = os.path.join(file_output_dir, f"{stem_name}.md")
         try:
             with open(summary_path, "w", encoding="utf-8") as f:
                 f.write(f"# {stem_name} Summary\n\n")
-                f.write("> AI-generated summary\n\n")
-                f.write(f"{summary_text}\n\n")
+                f.write("> AI-generated summary per page range\n\n")
                 f.write("## Page Chunks\n\n")
-                for s, e, basename, _ in chunk_ranges:
-                    chunk_file = f"{basename}.md"
-                    f.write(f"- [{chunk_file}]({chunk_file})\n")
+                for s, e, cfile, _ in chunk_ranges:
+                    f.write(f"- [{cfile}]({cfile})\n")
+                f.write("\n## Summaries\n\n")
+                for s, e, cfile, summary in chunk_ranges:
+                    f.write(f"### Pages {s}-{e}\n\n")
+                    if summary:
+                        f.write(f"{summary}\n\n")
+                    else:
+                        f.write("> No summary generated for this section.\n\n")
+                    f.write(f"[View full content]({cfile})\n\n")
             logger.info("Wrote summary file %s", summary_path)
         except OSError as e:
             logger.error("Failed to write summary file for %s: %s", filename, e)

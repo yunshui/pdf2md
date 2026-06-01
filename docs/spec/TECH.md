@@ -136,11 +136,11 @@ Markdown 内容
     output/{stem_name}_md/{stem}_10-19.md
     ...
     │
-    │  call_summarize_api() → 发送所有 chunk 内容
+    │  每个 chunk 写入后，立即 call_summarize_api() → 发送当前 chunk 内容
     ▼
-LLM 摘要文本
+每个 chunk 的 LLM 摘要文本
     │
-    │  写入 {stem}.md（含摘要 + chunk 链接）
+    │  写入 {stem}.md（含各分页摘要 + chunk 链接）
     ▼
 磁盘 summary 文件 (.md)
     output/{stem_name}_md/{stem_name}.md
@@ -191,12 +191,13 @@ LLM 摘要文本
 
 ### 5.5 LLM 摘要生成
 
-**决策**: 调用 OpenAI 兼容格式的 LLM API，将所有 chunk 内容拼接后发送。
+**决策**: 调用 OpenAI 兼容格式的 LLM API，每个分页 chunk 单独发送生成摘要，最终汇总文件包含各分页的链接和对应摘要。
 
 **理由**:
 - 配置灵活（支持任意兼容 API）
 - 提示模板可自定义
 - 空 api_key 时可跳过认证（某些本地部署场景）
+- 避免长文档超出 LLM 上下文限制
 
 ### 5.6 路径解析策略
 

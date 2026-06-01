@@ -59,12 +59,12 @@ Main CLI script — single file, ~500 lines, Python 3.7+.
 | `get_pdf_page_count(file_path, logger)` | Read total page count from PDF file using PyMuPDF (PDF only) |
 | `resolve_files(path, logger)` | Resolve path to list of supported files (.pdf, .docx, .doc, .txt) |
 | `call_file_parse_api(config, logger, file_path, start_page, end_page, file_name)` | POST file to paginated parse API with multipart form-data + retry |
-| `call_summarize_api(config, logger, chunks_info)` | Call LLM API to generate document summary |
+| `call_summarize_api(config, logger, content)` | Call LLM API to generate summary for a single chunk |
 | `extract_md_content(response_data)` | Extract markdown from API response, list of (index, content) |
 | `get_unique_dir(parent_dir, stem_name)` | Return unique output directory path, suffix on collision |
 | `load_config(script_dir)` | Load/create config from conf/setting.json |
 | `setup_logging(log_dir)` | Set up file + console logging, daily rotation |
-| `main()` | Entry point: paginate → call API → write chunks → summarize |
+| `main()` | Entry point: paginate → call API → write chunks + summarize each → write summary |
 
 ### scripts/requirements.txt
 
@@ -156,10 +156,37 @@ Each input file gets its own `{stem_name}_md/` directory:
 ```
 output/
 └── report_md/
-    ├── report.md              # Summary (with links to chunks)
+    ├── report.md              # Summary (with links to chunks + per-chunk summaries)
     ├── report_0-9.md          # Pages 0-9 content
     ├── report_10-19.md        # Pages 10-19 content
     └── ...
+```
+
+**Summary file format**:
+
+```markdown
+# report Summary
+
+> AI-generated summary per page range
+
+## Page Chunks
+
+- [report_0-9.md](report_0-9.md)
+- [report_10-19.md](report_10-19.md)
+
+## Summaries
+
+### Pages 0-9
+
+{LLM summary for pages 0-9}
+
+[View full content](report_0-9.md)
+
+### Pages 10-19
+
+{LLM summary for pages 10-19}
+
+[View full content](report_10-19.md)
 ```
 
 ---

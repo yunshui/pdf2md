@@ -11,5 +11,5 @@
   "summarize_api_key": "123",
   "summarize_model": "qwen3.5",
   "summarize_timeout": 200,
-  "summarize_prompt": "You are a document summarization assistant. Given the following markdown content from different page ranges of a document, create a concise summary (within 500 words). Include key points and important details. For specifics, refer to the individual page files.\n\n{chunks_info}\n\nSummary:"
+  "summarize_prompt": "You are a document summarization assistant. Given the following markdown content, create a concise summary (within 500 words). Include key points and important details.\n\n{content}\n\nSummary:"
 }

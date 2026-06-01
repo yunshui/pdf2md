@@ -57,14 +57,26 @@ output/
 ```markdown
 # report Summary
 
-> AI-generated summary
-
-{LLM summary text}
+> AI-generated summary per page range
 
 ## Page Chunks
 
 - [report_0-9.md](report_0-9.md)
 - [report_10-19.md](report_10-19.md)
+
+## Summaries
+
+### Pages 0-9
+
+{LLM summary for pages 0-9}
+
+[View full content](report_0-9.md)
+
+### Pages 10-19
+
+{LLM summary for pages 10-19}
+
+[View full content](report_10-19.md)
 ```
 
 ## Logs

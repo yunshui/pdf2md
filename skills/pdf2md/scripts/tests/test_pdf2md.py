@@ -34,7 +34,7 @@ def sample_config():
         "summarize_api_key": "test-key",
         "summarize_model": "gpt-4o",
         "summarize_timeout": 60,
-        "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
+        "summarize_prompt": "Summarize: {content}\n\nSummary:",
     }
 
 
@@ -588,7 +588,7 @@ class TestIntegration:
             "summarize_api_key": "test-key",
             "summarize_model": "gpt-4o",
             "summarize_timeout": 60,
-            "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
+            "summarize_prompt": "Summarize: {content}\n\nSummary:",
         }
         mock_load_config.return_value = config
 
@@ -615,7 +615,7 @@ class TestIntegration:
             "choices": [{"message": {"content": "This is a test summary."}}],
         }
 
-        mock_post.side_effect = [parse_response_1, parse_response_2, summarize_response]
+        mock_post.side_effect = [parse_response_1, summarize_response, parse_response_2]
 
         # Run with mocked argv
         with patch("sys.argv", ["pdf2md.py", test_file]):
@@ -668,7 +668,7 @@ class TestIntegration:
             "summarize_api_key": "test-key",
             "summarize_model": "gpt-4o",
             "summarize_timeout": 60,
-            "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
+            "summarize_prompt": "Summarize: {content}\n\nSummary:",
         }
         mock_load_config.return_value = config
 
@@ -702,7 +702,7 @@ class TestIntegration:
             "summarize_api_key": "test-key",
             "summarize_model": "gpt-4o",
             "summarize_timeout": 60,
-            "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
+            "summarize_prompt": "Summarize: {content}\n\nSummary:",
         }
         mock_load_config.return_value = config
 
@@ -728,14 +728,22 @@ class TestIntegration:
             "results": {},  # Empty results = no more content
         }
 
-        summarize_response = MagicMock()
-        summarize_response.status_code = 200
-        summarize_response.json.return_value = {
-            "choices": [{"message": {"content": "Summary of all pages."}}],
+        summarize_response_1 = MagicMock()
+        summarize_response_1.status_code = 200
+        summarize_response_1.json.return_value = {
+            "choices": [{"message": {"content": "Summary of pages 0-9."}}],
+        }
+
+        summarize_response_2 = MagicMock()
+        summarize_response_2.status_code = 200
+        summarize_response_2.json.return_value = {
+            "choices": [{"message": {"content": "Summary of pages 10-19."}}],
         }
 
         mock_post.side_effect = [
-            parse_response_1, parse_response_2, parse_response_3, summarize_response,
+            parse_response_1, summarize_response_1,
+            parse_response_2, summarize_response_2,
+            parse_response_3,
         ]
 
         with patch("sys.argv", ["pdf2md.py", test_file]):
