@@ -83,6 +83,7 @@ DEFAULT_CONFIG = {
     "summarize_api_url": str,  # LLM 摘要 API 端点
     "summarize_api_key": str,  # LLM API 密钥
     "summarize_model": str,    # LLM 模型名称
+    "summarize_timeout": int,  # 摘要 API 超时（秒）
     "summarize_prompt": str,   # LLM 摘要提示模板
 }
 

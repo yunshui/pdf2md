@@ -33,6 +33,7 @@ def sample_config():
         "summarize_api_url": "http://example.com/v1/chat/completions",
         "summarize_api_key": "test-key",
         "summarize_model": "gpt-4o",
+        "summarize_timeout": 60,
         "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
     }
 
@@ -131,6 +132,7 @@ class TestLoadConfig:
         assert "summarize_api_url" in pdf2md.DEFAULT_CONFIG
         assert "summarize_api_key" in pdf2md.DEFAULT_CONFIG
         assert "summarize_model" in pdf2md.DEFAULT_CONFIG
+        assert "summarize_timeout" in pdf2md.DEFAULT_CONFIG
         assert "summarize_prompt" in pdf2md.DEFAULT_CONFIG
 
 
@@ -585,6 +587,7 @@ class TestIntegration:
             "summarize_api_url": "http://example.com/v1/chat/completions",
             "summarize_api_key": "test-key",
             "summarize_model": "gpt-4o",
+            "summarize_timeout": 60,
             "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
         }
         mock_load_config.return_value = config
@@ -664,6 +667,7 @@ class TestIntegration:
             "summarize_api_url": "http://example.com/v1/chat/completions",
             "summarize_api_key": "test-key",
             "summarize_model": "gpt-4o",
+            "summarize_timeout": 60,
             "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
         }
         mock_load_config.return_value = config
@@ -697,6 +701,7 @@ class TestIntegration:
             "summarize_api_url": "http://example.com/v1/chat/completions",
             "summarize_api_key": "test-key",
             "summarize_model": "gpt-4o",
+            "summarize_timeout": 60,
             "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
         }
         mock_load_config.return_value = config

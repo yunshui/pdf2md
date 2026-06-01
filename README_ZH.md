@@ -36,6 +36,7 @@ python pdf2md.py <文件或目录路径>
 | `summarize_api_url` | `http://123.192.49.9:8086/v1/chat/completions` | LLM 摘要 API 地址 |
 | `summarize_api_key` | `"123"` | LLM API 密钥（可选） |
 | `summarize_model` | `qwen3.5` | LLM 模型名称 |
+| `summarize_timeout` | `200` | 摘要 API 超时时间（秒） |
 | `summarize_prompt` | *(内置模板)* | LLM 摘要提示模板 |
 
 ## 输出文件

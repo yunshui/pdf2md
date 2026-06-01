@@ -48,6 +48,7 @@ DEFAULT_CONFIG = {
     "summarize_api_url": "http://123.192.49.9:8086/v1/chat/completions",
     "summarize_api_key": "123",
     "summarize_model": "qwen3.5",
+    "summarize_timeout": 200,
     "summarize_prompt": (
         "You are a document summarization assistant. Given the following markdown "
         "content from different page ranges of a document, create a concise summary "
@@ -157,6 +158,7 @@ def call_summarize_api(config, logger, chunks_info):
     prompt_template = config["summarize_prompt"]
     max_retries = config["max_retries"]
     timeout = config["timeout"]
+    summarize_timeout = config.get("summarize_timeout", 200)
 
     prompt = prompt_template.format(chunks_info=chunks_info)
     body = {
@@ -172,7 +174,7 @@ def call_summarize_api(config, logger, chunks_info):
     for attempt in range(1, max_retries + 1):
         logger.info("Calling summarize API (attempt %d/%d)", attempt, max_retries)
         try:
-            resp = requests.post(url, json=body, headers=headers, timeout=timeout)
+            resp = requests.post(url, json=body, headers=headers, timeout=summarize_timeout)
             if resp.status_code != 200:
                 logger.error("Summarize API HTTP %d (attempt %d)", resp.status_code, attempt)
                 if attempt < max_retries:
@@ -281,6 +283,7 @@ def load_config(script_dir):
         "summarize_api_url": str,
         "summarize_api_key": str,
         "summarize_model": str,
+        "summarize_timeout": (int, float),
         "summarize_prompt": str,
     }
     bad_types = []

@@ -10,5 +10,6 @@
   "summarize_api_url": "http://123.192.49.9:8086/v1/chat/completions",
   "summarize_api_key": "123",
   "summarize_model": "qwen3.5",
+  "summarize_timeout": 200,
   "summarize_prompt": "You are a document summarization assistant. Given the following markdown content from different page ranges of a document, create a concise summary (within 500 words). Include key points and important details. For specifics, refer to the individual page files.\n\n{chunks_info}\n\nSummary:"
 }

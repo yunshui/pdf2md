@@ -112,6 +112,7 @@ File: `conf/setting.json` (auto-created with defaults on first run, relative to 
 | `summarize_api_url` | `http://123.192.49.9:8086/v1/chat/completions` | LLM summary API endpoint |
 | `summarize_api_key` | `"123"` | LLM API key (optional) |
 | `summarize_model` | `qwen3.5` | LLM model name |
+| `summarize_timeout` | `200` | Summarize API timeout in seconds |
 | `summarize_prompt` | *(see DEFAULT_CONFIG)* | LLM summary prompt template |
 
 **Notes:**

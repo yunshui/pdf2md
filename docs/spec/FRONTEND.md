@@ -151,6 +151,7 @@ python pdf2md.py data/example-output.json
   "summarize_api_url": "http://123.192.49.9:8086/v1/chat/completions",
   "summarize_api_key": "123",
   "summarize_model": "qwen3.5",
+  "summarize_timeout": 200,
   "summarize_prompt": "You are a document summarization assistant..."
 }
 ```
