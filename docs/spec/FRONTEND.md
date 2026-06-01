@@ -142,7 +142,7 @@ python pdf2md.py data/example-output.json
   "timeout": 120,
   "output_dir": "output",
   "log_dir": "logs",
-  "page_num": 5,
+  "page_num": 10,
   "summarize_api_url": "http://123.192.49.9:8086/v1/chat/completions",
   "summarize_api_key": "123",
   "summarize_model": "qwen3.5",

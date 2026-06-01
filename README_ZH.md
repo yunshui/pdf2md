@@ -32,7 +32,7 @@ python pdf2md.py <文件或目录路径>
 | `timeout` | `120` | 请求超时时间（秒） |
 | `output_dir` | `output` | Markdown 输出目录 |
 | `log_dir` | `logs` | 日志存储目录 |
-| `page_num` | `5` | 每批处理页数 |
+| `page_num` | `10` | 每批处理页数 |
 | `summarize_api_url` | `http://123.192.49.9:8086/v1/chat/completions` | LLM 摘要 API 地址 |
 | `summarize_api_key` | `"123"` | LLM API 密钥（可选） |
 | `summarize_model` | `qwen3.5` | LLM 模型名称 |

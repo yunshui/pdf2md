@@ -36,7 +36,7 @@ Config file: `conf/setting.json` (created with defaults on first run if missing)
 | `timeout` | `120` | Request timeout in seconds |
 | `output_dir` | `output` | Output directory for `.md` files |
 | `log_dir` | `logs` | Log directory |
-| `page_num` | `5` | Pages per API request |
+| `page_num` | `10` | Pages per API request |
 | `summarize_api_url` | `http://123.192.49.9:8086/v1/chat/completions` | LLM summary API endpoint |
 | `summarize_api_key` | `"123"` | LLM API key (optional) |
 | `summarize_model` | `qwen3.5` | LLM model name |
