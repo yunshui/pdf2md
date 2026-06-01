@@ -77,29 +77,36 @@ python pdf2md.py data/example-output.json
 ### 3.1 正常转换流程输出
 
 ```
-[2026-05-21 10:00:00] INFO   pdf2md started. Config loaded from conf/setting.json
-[2026-05-21 10:00:00] INFO   Processing path: documents/report.pdf
-[2026-05-21 10:00:00] INFO   Found 1 file(s) to process.
-[2026-05-21 10:00:00] INFO   Encoded documents/report.pdf (1048576 bytes, base64 size: 1398102).
-[2026-05-21 10:00:00] INFO   Calling API for report.pdf (attempt 1/3)
-[2026-05-21 10:00:05] INFO   API response in 5.2s, status=completed
-[2026-05-21 10:00:05] INFO   API call succeeded for report.pdf
-[2026-05-21 10:00:05] INFO   Wrote output report.md (5230 bytes) for report.pdf (index 0)
-[2026-05-21 10:00:05] INFO   Processed 1 files: 1 success, 0 failed
+[2026-06-01 10:00:00] INFO   pdf2md started. Config loaded from conf/setting.json
+[2026-06-01 10:00:00] INFO   Processing path: documents/report.pdf
+[2026-06-01 10:00:00] INFO   Found 1 file(s) to process.
+[2026-06-01 10:00:00] INFO   Processing documents/report.pdf (1048576 bytes)
+[2026-06-01 10:00:00] INFO   Output directory: output/report_md
+[2026-06-01 10:00:00] INFO   Calling API for report.pdf pages 0-4 (attempt 1/3)
+[2026-06-01 10:00:05] INFO   API response in 5.2s, status=completed
+[2026-06-01 10:00:05] INFO   Wrote output report_0-4.md (5230 bytes) for report.pdf
+[2026-06-01 10:00:05] INFO   Calling API for report.pdf pages 5-9 (attempt 1/3)
+[2026-06-01 10:00:06] INFO   API response in 1.0s, status=completed
+[2026-06-01 10:00:06] INFO   No more content from API for report.pdf at pages 5-9
+[2026-06-01 10:00:06] INFO   Calling summarize API (attempt 1/3)
+[2026-06-01 10:00:10] INFO   Summarize API returned 350 chars
+[2026-06-01 10:00:10] INFO   Wrote summary file output/report_md/report.md
+[2026-06-01 10:00:10] INFO   Processed 1 files: 1 success, 0 failed
 ```
 
 ### 3.2 失败重试输出
 
 ```
-[2026-05-21 10:00:00] INFO   Encoded documents/report.pdf (1048576 bytes, base64 size: 1398102).
-[2026-05-21 10:00:00] INFO   Calling API for report.pdf (attempt 1/3)
-[2026-05-21 10:00:32] ERROR  Request failed after 32.0s: ConnectionError (attempt 1)
-[2026-05-21 10:00:34] INFO   Calling API for report.pdf (attempt 2/3)
-[2026-05-21 10:01:06] ERROR  Request failed after 32.0s: ConnectionError (attempt 2)
-[2026-05-21 10:01:08] INFO   Calling API for report.pdf (attempt 3/3)
-[2026-05-21 10:01:40] ERROR  Request failed after 32.0s: ConnectionError (attempt 3)
-[2026-05-21 10:01:40] ERROR  API call failed for report.pdf after all retries
-[2026-05-21 10:01:40] INFO   Processed 1 files: 0 success, 1 failed
+[2026-06-01 10:00:00] INFO   Processing documents/report.pdf (1048576 bytes)
+[2026-06-01 10:00:00] INFO   Output directory: output/report_md
+[2026-06-01 10:00:00] INFO   Calling API for report.pdf pages 0-4 (attempt 1/3)
+[2026-06-01 10:00:32] ERROR  Request failed after 32.0s: ConnectionError (attempt 1)
+[2026-06-01 10:00:34] INFO   Calling API for report.pdf pages 0-4 (attempt 2/3)
+[2026-06-01 10:01:06] ERROR  Request failed after 32.0s: ConnectionError (attempt 2)
+[2026-06-01 10:01:08] INFO   Calling API for report.pdf pages 0-4 (attempt 3/3)
+[2026-06-01 10:01:40] ERROR  Request failed after 32.0s: ConnectionError (attempt 3)
+[2026-06-01 10:01:40] ERROR  API call failed for report.pdf pages 0-4
+[2026-06-01 10:01:40] INFO   Processed 1 files: 0 success, 1 failed
 ```
 
 ### 3.3 文件名冲突输出
@@ -128,13 +135,18 @@ python pdf2md.py data/example-output.json
 
 ```json
 {
-  "api_url": "http://123.192.49.73:8000/convert2markdown",
+  "api_url": "http://123.192.49.73:8000/file_parse",
   "client_id": "bf-mkd",
   "max_retries": 3,
   "retry_delay": 2,
   "timeout": 120,
   "output_dir": "output",
-  "log_dir": "logs"
+  "log_dir": "logs",
+  "page_num": 5,
+  "summarize_api_url": "http://127.0.0.1:8000/v1/chat/completions",
+  "summarize_api_key": "",
+  "summarize_model": "gpt-4o",
+  "summarize_prompt": "You are a document summarization assistant..."
 }
 ```
 

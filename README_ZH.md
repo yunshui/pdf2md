@@ -1,6 +1,6 @@
 # pdf2md
 
-通过远程 API 将 PDF、DOCX、DOC 和 TXT 文件转换为 Markdown 格式。
+通过远程分页 API 和 LLM 摘要将 PDF、DOCX、DOC 和 TXT 文件转换为 Markdown 格式。
 
 ## 快速开始
 
@@ -13,8 +13,10 @@ python pdf2md.py <文件或目录路径>
 
 - **多格式支持**: PDF、DOCX、DOC、TXT
 - **批量处理**: 传入目录可一次性转换所有支持的文件
+- **分页处理**: 按页码范围分页调用 API，每个 chunk 独立保存
+- **LLM 摘要**: 自动生成文档摘要，含 chunk 文件链接（可配置 OpenAI 兼容 API）
+- **目录级输出**: 每个文件对应独立 `{name}_md/` 目录，含 chunk 和 summary 文件
 - **重试机制**: 可配置的网络请求重试次数和超时时间
-- **文件重名处理**: 如果输出文件已存在，自动添加随机后缀（如 `report_abcde.md`）
 - **详细日志**: 按天记录日志，包含耗时、重试次数、错误详情等信息
 
 ## 配置说明
@@ -23,26 +25,54 @@ python pdf2md.py <文件或目录路径>
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
-| `api_url` | `http://123.192.49.73:8000/convert2markdown` | API 接口地址 |
+| `api_url` | `http://123.192.49.73:8000/file_parse` | 分页解析 API 地址 |
 | `client_id` | `bf-mkd` | API 客户端标识 |
 | `max_retries` | `3` | 最大重试次数 |
 | `retry_delay` | `2` | 重试间隔（秒） |
 | `timeout` | `120` | 请求超时时间（秒） |
 | `output_dir` | `output` | Markdown 输出目录 |
 | `log_dir` | `logs` | 日志存储目录 |
+| `page_num` | `5` | 每批处理页数 |
+| `summarize_api_url` | `http://127.0.0.1:8000/v1/chat/completions` | LLM 摘要 API 地址 |
+| `summarize_api_key` | `""` | LLM API 密钥（可选） |
+| `summarize_model` | `gpt-4o` | LLM 模型名称 |
+| `summarize_prompt` | *(内置模板)* | LLM 摘要提示模板 |
 
 ## 输出文件
 
-- 转换后的 Markdown 文件保存在 `output/` 目录下
-- 如果同名文件已存在，自动追加 5 位随机字符（例如 `report_abcde.md`）
+每个输入文件对应一个独立的输出目录 `{stem_name}_md/`：
+
+```
+output/
+└── report_md/
+    ├── report.md              # 摘要文件（含 chunk 链接）
+    ├── report_0-4.md          # 第 0-4 页内容
+    ├── report_5-9.md          # 第 5-9 页内容
+    └── ...
+```
+
+**摘要文件格式**:
+
+```markdown
+# report Summary
+
+> AI-generated summary
+
+{LLM 生成的摘要文本}
+
+## Page Chunks
+
+- [report_0-4.md](report_0-4.md)
+- [report_5-9.md](report_5-9.md)
+```
 
 ## 日志文件
 
 日志存储在 `logs/pdf2md-YYYYMMDD.log`，按天轮转。每条日志包含：
-- 输入文件名和 Base64 编码大小
-- API 调用次数和响应状态
+- 输入文件名和大小
+- API 调用次数、页码范围和响应状态
 - 每次请求耗时
-- 输出文件名和大小
+- chunk 和 summary 文件名和大小
 - 失败时的错误详情
 
 ## 退出码

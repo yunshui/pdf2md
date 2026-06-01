@@ -31,11 +31,12 @@
 │        │                                              │
 │        ▼                                              │
 │  ┌──────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │ resolve_ │→ │ file_to_     │→ │ call_api     │    │
-│  │ files    │  │ base64       │  │ (retry)      │    │
-│  └──────────┘  └──────────────┘  └──────────────┘    │
-│                                              │         │
-│                                              ▼         │
+│  │ resolve_ │→ │ get_unique_  │→ │ call_file_   │    │
+│  │ files    │  │ dir          │  │ parse_api    │    │
+│  └──────────┘  └──────────────┘  │ (分页+重试)  │    │
+│                                  └──────────────┘    │
+│                                              │        │
+│                                              ▼        │
 │                                        ┌──────────┐   │
 │                                        │ extract_ │   │
 │                                        │ md_content│   │
@@ -43,14 +44,21 @@
 │                                              │        │
 │                                              ▼        │
 │                                        ┌──────────┐   │
-│                                        │ get_     │   │
-│                                        │ unique_  │   │
-│                                        │ path     │   │
+│                                        │ 写入 .md │   │
+│                                        │ chunk文件│   │
 │                                        └──────────┘   │
 │                                              │        │
 │                                              ▼        │
 │                                        ┌──────────┐   │
-│                                        │ 写入 .md │   │
+│                                        │ call_    │   │
+│                                        │ summarize│   │
+│                                        │ _api     │   │
+│                                        └──────────┘   │
+│                                              │        │
+│                                              ▼        │
+│                                        ┌──────────┐   │
+│                                        │ 写入     │   │
+│                                        │ summary  │   │
 │                                        └──────────┘   │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -63,13 +71,18 @@
 
 ```python
 DEFAULT_CONFIG = {
-    "api_url": str,        # API 端点
+    "api_url": str,        # API 端点（multipart file_parse）
     "client_id": str,      # API 客户端标识
     "max_retries": int,    # 最大重试次数
     "retry_delay": int,    # 重试间隔（秒）
     "timeout": int,        # 请求超时（秒）
     "output_dir": str,     # 输出目录
     "log_dir": str,        # 日志目录
+    "page_num": int,       # 每批处理页数
+    "summarize_api_url": str,  # LLM 摘要 API 端点
+    "summarize_api_key": str,  # LLM API 密钥
+    "summarize_model": str,    # LLM 模型名称
+    "summarize_prompt": str,   # LLM 摘要提示模板
 }
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
@@ -82,10 +95,11 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
 | `load_config(script_dir)` | `script_dir: str` | `dict` | 加载/创建/验证配置 | os, json, sys, DEFAULT_CONFIG |
 | `setup_logging(log_dir)` | `log_dir: str` | `logging.Logger` | 初始化日志系统 | logging, datetime, os |
 | `resolve_files(path, logger)` | `path: str, logger` | `list[str]` | 解析输入文件列表 | os, glob, SUPPORTED_EXTENSIONS |
-| `file_to_base64(file_path)` | `file_path: str` | `str` | 读取文件并 Base64 编码 | base64, open() |
-| `call_api(config, logger, base64_content, file_name)` | 见参数 | `dict` / `None` | 调用转换 API（带重试） | requests, time, json |
+| `call_file_parse_api(config, logger, file_path, start_page, end_page, file_name)` | 见参数 | `dict` / `None` | 调用分页解析 API（multipart + 重试） | requests, time |
+| `call_summarize_api(config, logger, chunks_info)` | 见参数 | `str` | 调用 LLM API 生成摘要 | requests, time |
 | `extract_md_content(response_data)` | `response_data: dict` | `list[tuple]` | 从 API 响应提取 Markdown | - |
-| `get_unique_path(output_dir, base_name)` | `output_dir: str, base_name: str` | `str` | 生成不冲突的输出路径 | os, random, string |
+| `get_unique_path(output_dir, base_name)` | `output_dir: str, base_name: str` | `str` | 生成不冲突的文件路径 | os, random, string |
+| `get_unique_dir(parent_dir, stem_name)` | `parent_dir: str, stem_name: str` | `str` | 生成不冲突的目录路径 | os, random, string |
 | `main()` | - | - | 程序入口，编排全流程 | 以上所有函数 |
 
 ---
@@ -95,11 +109,7 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
 ```
 磁盘文件 (.pdf/.docx)
     │
-    │  file_to_base64()
-    ▼
-Base64 字符串
-    │
-    │  call_api() → POST {"files": [base64]}
+    │  call_file_parse_api() → multipart POST {file, start_page, end_page}
     ▼
 API 响应 JSON
     {
@@ -109,13 +119,24 @@ API 响应 JSON
     │
     │  extract_md_content()
     ▼
-Markdown 内容列表
-    [(index, md_content), ...]
+Markdown 内容
+    (index, md_content)
     │
-    │  get_unique_path() + 写入文件
+    │  写入 {stem}_{start}-{end}.md 到 {stem}_md/ 目录
     ▼
-磁盘文件 (.md)
-    output/{filename}.md
+磁盘 chunk 文件 (.md)
+    output/{stem_name}_md/{stem}_0-4.md
+    output/{stem_name}_md/{stem}_5-9.md
+    ...
+    │
+    │  call_summarize_api() → 发送所有 chunk 内容
+    ▼
+LLM 摘要文本
+    │
+    │  写入 {stem}.md（含摘要 + chunk 链接）
+    ▼
+磁盘 summary 文件 (.md)
+    output/{stem_name}_md/{stem_name}.md
 ```
 
 ---
@@ -143,7 +164,34 @@ Markdown 内容列表
 - 并发会增加 API 服务器压力
 - 保持代码简单可靠
 
-### 5.3 路径解析策略
+### 5.3 分页处理模式
+
+**决策**: 使用 `start_page_id` / `end_page_id` 分页请求，`results` 为空时终止。
+
+**理由**:
+- 避免单次请求过大导致超时
+- 按需获取内容，每 chunk 独立写入文件
+- 终止条件清晰（空 results = 无更多内容）
+
+### 5.4 目录级输出
+
+**决策**: 每个输入文件对应一个 `{stem_name}_md/` 输出目录，内含 chunk 文件和 summary 文件。
+
+**理由**:
+- 结构清晰，便于查看和管理
+- 避免输出目录文件过多
+- 支持 LLM 摘要与 chunk 文件关联
+
+### 5.5 LLM 摘要生成
+
+**决策**: 调用 OpenAI 兼容格式的 LLM API，将所有 chunk 内容拼接后发送。
+
+**理由**:
+- 配置灵活（支持任意兼容 API）
+- 提示模板可自定义
+- 空 api_key 时可跳过认证（某些本地部署场景）
+
+### 5.6 路径解析策略
 
 **决策**: 相对路径（log_dir, output_dir）相对于脚本所在目录解析，而非当前工作目录。
 
@@ -151,7 +199,7 @@ Markdown 内容列表
 - 用户从任意目录运行脚本时，日志和输出都在预期位置
 - 避免输出文件散落在各处
 
-### 5.4 重试策略
+### 5.7 重试策略
 
 **决策**: 固定延迟重试（非指数退避），可配置次数和间隔。
 
@@ -160,7 +208,7 @@ Markdown 内容列表
 - 固定延迟更易于理解和配置
 - 未来可增加指数退避作为可选策略
 
-### 5.5 日志级别设计
+### 5.8 日志级别设计
 
 **决策**: 文件 Handler 记录 DEBUG，控制台 Handler 记录 INFO。
 

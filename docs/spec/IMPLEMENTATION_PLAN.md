@@ -78,21 +78,34 @@
 | 6.4 | 创建 pdf2md skill | skills/pdf2md/SKILL.md |
 | 6.5 | 重构 skill 结构 | 移至 skills/pdf2md/scripts/ 目录 |
 
+### 阶段 7: 分页 API + LLM 摘要（v2.0，已完成）
+
+| 步骤 | 内容 | 产出 |
+|------|------|------|
+| 7.1 | 更新配置字段 | 添加 page_num, summarize_api_url/key/model/prompt |
+| 7.2 | 重写 API 调用函数 | call_file_parse_api（multipart form-data + 分页） |
+| 7.3 | 添加 LLM 摘要函数 | call_summarize_api（OpenAI 兼容格式） |
+| 7.4 | 添加目录级输出函数 | get_unique_dir（{stem_name}_md 模式） |
+| 7.5 | 重写 main 函数流程 | 分页循环 + 写入 chunk 文件 + 调用摘要 + 写入 summary |
+| 7.6 | 移除旧函数 | 删除 file_to_base64, call_api, 移除 base64 导入 |
+| 7.7 | 更新测试套件 | +7 新测试（call_summarize_api, get_unique_dir, 分页集成） |
+| 7.8 | 同步 skill 脚本 | 复制更新到 skills/pdf2md/scripts/ |
+
 ---
 
 ## 3. 文件变更清单
 
 | 文件 | 操作 | 行数 | 说明 |
 |------|------|------|------|
-| `pdf2md.py` | 新建 | 374 | 主程序，包含所有业务逻辑 |
-| `conf/setting.json` | 新建 | 10 | 默认配置 |
+| `pdf2md.py` | 修改 | 438 | 主程序，分页 API + LLM 摘要 |
+| `conf/setting.json` | 修改 | 15 | 新增分页和摘要配置字段 |
 | `requirements.txt` | 新建 | 1 | Python 依赖（requests） |
 | `requirements-dev.txt` | 新建 | 1 | 开发依赖（pytest） |
 | `.gitignore` | 新建 | 6 | Git 忽略规则 |
 | `CLAUDE.md` | 新建 | 59 | 项目指南 |
 | `README.md` | 新建 | 67 | 英文说明 |
 | `README_ZH.md` | 新建 | 67 | 中文说明 |
-| `tests/test_pdf2md.py` | 新建 | 540 | 测试套件（34 个测试） |
+| `tests/test_pdf2md.py` | 修改 | ~580 | 测试套件（41 个测试） |
 | `skills/pdf2md/SKILL.md` | 新建 | ~150 | pdf2md skill 文档 |
 
 ---
@@ -125,15 +138,16 @@
 | 文件名冲突 | 生成带随机后缀的文件名 | 通过 |
 | 配置文件缺失 | 自动创建默认配置 | 通过 |
 
-### 5.2 自动化测试（已完成，34 个全部通过）
+### 5.2 自动化测试（已完成，41 个全部通过）
 
-- [x] `load_config()` 单元测试（5 个：缺失文件、无效 JSON、缺少字段、类型错误、正常加载）
+- [x] `load_config()` 单元测试（6 个：缺失文件、无效 JSON、缺少字段、类型错误、正常加载、新字段检查）
 - [x] `resolve_files()` 单元测试（5 个：文件、目录、空目录、不支持格式、大小写）
-- [x] `file_to_base64()` 单元测试（3 个：正常、不存在、空文件）
-- [x] `call_api()` 单元测试（7 个：成功、重试、超时、JSON 错误、连接错误、日志记录）
+- [x] `call_file_parse_api()` 单元测试（5 个：成功、重试、超时、JSON 错误、连接错误）
+- [x] `call_summarize_api()` 单元测试（6 个：成功返回摘要、空 choices、HTTP 错误、有/无认证头、重试）
 - [x] `extract_md_content()` 单元测试（6 个：正常、多结果、空、缺字段、类型保护）
 - [x] `get_unique_path()` 单元测试（4 个：无冲突、冲突、多冲突、后缀格式）
-- [x] `main()` 集成测试（4 个：无参数、不存在路径、API 成功、API 失败）
+- [x] `get_unique_dir()` 单元测试（4 个：无冲突、冲突、多冲突、后缀格式）
+- [x] `main()` 集成测试（5 个：无参数、不存在路径、API 成功、API 失败、分页多 chunk）
 
 ---
 

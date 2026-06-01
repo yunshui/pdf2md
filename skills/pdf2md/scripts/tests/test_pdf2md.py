@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 from io import StringIO
 
 # Add project root to path
@@ -23,13 +23,18 @@ def tmp_dir(tmp_path):
 def sample_config():
     """Provide a valid sample config."""
     return {
-        "api_url": "http://example.com/convert2markdown",
+        "api_url": "http://example.com/file_parse",
         "client_id": "test-client",
         "max_retries": 2,
         "retry_delay": 0,
         "timeout": 5,
         "output_dir": "output",
         "log_dir": "logs",
+        "page_num": 5,
+        "summarize_api_url": "http://example.com/v1/chat/completions",
+        "summarize_api_key": "test-key",
+        "summarize_model": "gpt-4o",
+        "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
     }
 
 
@@ -37,11 +42,7 @@ def sample_config():
 def sample_api_response():
     """Provide a valid sample API response."""
     return {
-        "task_id": "test-uuid",
         "status": "completed",
-        "backend": "test-engine",
-        "file_names": ["file_0"],
-        "version": "1.0.0",
         "results": {
             "0": {"md_content": "# Test Document\n\nThis is test content."},
         },
@@ -125,6 +126,14 @@ class TestLoadConfig:
         captured = capsys.readouterr()
         assert "invalid value types" in captured.err
 
+    def test_new_fields_in_default_config(self):
+        """New config fields should be present in DEFAULT_CONFIG."""
+        assert "page_num" in pdf2md.DEFAULT_CONFIG
+        assert "summarize_api_url" in pdf2md.DEFAULT_CONFIG
+        assert "summarize_api_key" in pdf2md.DEFAULT_CONFIG
+        assert "summarize_model" in pdf2md.DEFAULT_CONFIG
+        assert "summarize_prompt" in pdf2md.DEFAULT_CONFIG
+
 
 # ============================================================
 # resolve_files Tests
@@ -186,65 +195,42 @@ class TestResolveFiles:
 
 
 # ============================================================
-# file_to_base64 Tests
+# call_file_parse_api Tests
 # ============================================================
 
-class TestFileToBase64:
-    """Tests for file_to_base64 function."""
-
-    def test_encodes_file_correctly(self, tmp_dir):
-        """Should return base64-encoded content of the file."""
-        original = b"Hello, World!"
-        file_path = os.path.join(tmp_dir, "test.txt")
-        with open(file_path, "wb") as f:
-            f.write(original)
-
-        import base64
-        expected = base64.b64encode(original).decode("ascii")
-        result = pdf2md.file_to_base64(file_path)
-        assert result == expected
-
-    def test_raises_on_missing_file(self):
-        """Should raise OSError when file does not exist."""
-        with pytest.raises(OSError):
-            pdf2md.file_to_base64("/nonexistent/file.pdf")
-
-    def test_empty_file(self, tmp_dir):
-        """Should handle empty files correctly."""
-        file_path = os.path.join(tmp_dir, "empty.txt")
-        with open(file_path, "wb") as f:
-            pass
-
-        result = pdf2md.file_to_base64(file_path)
-        assert result == ""
-
-
-# ============================================================
-# call_api Tests
-# ============================================================
-
-class TestCallApi:
-    """Tests for call_api function."""
+class TestCallFileParseApi:
+    """Tests for call_file_parse_api function."""
 
     @patch("pdf2md.requests.post")
-    def test_success_on_first_attempt(self, mock_post, sample_config):
+    def test_success_on_first_attempt(self, mock_post, sample_config, tmp_dir):
         """Should return response dict on successful 200 response."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"status": "completed", "results": {}}
         mock_post.return_value = mock_response
 
+        # Create a test file
+        test_file = os.path.join(tmp_dir, "test.pdf")
+        with open(test_file, "wb") as f:
+            f.write(b"test content")
+
         logger = MagicMock()
-        result = pdf2md.call_api(
-            sample_config, logger, "base64data", "test.pdf"
+        result = pdf2md.call_file_parse_api(
+            sample_config, logger, test_file, 0, 4, "test.pdf",
         )
 
         assert result is not None
         assert result["status"] == "completed"
         mock_post.assert_called_once()
+        # Verify multipart form-data was used
+        call_kwargs = mock_post.call_args[1]
+        assert "files" in call_kwargs
+        assert "data" in call_kwargs
+        assert call_kwargs["data"]["start_page_id"] == "0"
+        assert call_kwargs["data"]["end_page_id"] == "4"
 
     @patch("pdf2md.requests.post")
-    def test_retries_on_non_200(self, mock_post, sample_config):
+    def test_retries_on_non_200(self, mock_post, sample_config, tmp_dir):
         """Should retry on non-200 status codes."""
         mock_response_500 = MagicMock()
         mock_response_500.status_code = 500
@@ -253,83 +239,170 @@ class TestCallApi:
         mock_response_200.json.return_value = {"status": "completed", "results": {}}
         mock_post.side_effect = [mock_response_500, mock_response_200]
 
+        test_file = os.path.join(tmp_dir, "test.pdf")
+        with open(test_file, "wb") as f:
+            f.write(b"test")
+
         logger = MagicMock()
-        result = pdf2md.call_api(
-            sample_config, logger, "base64data", "test.pdf"
+        result = pdf2md.call_file_parse_api(
+            sample_config, logger, test_file, 0, 4, "test.pdf",
         )
 
         assert result is not None
         assert mock_post.call_count == 2
 
     @patch("pdf2md.requests.post")
-    def test_returns_none_after_max_retries(self, mock_post, sample_config):
+    def test_returns_none_after_max_retries(self, mock_post, sample_config, tmp_dir):
         """Should return None after exhausting all retries."""
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_post.return_value = mock_response
 
+        test_file = os.path.join(tmp_dir, "test.pdf")
+        with open(test_file, "wb") as f:
+            f.write(b"test")
+
         logger = MagicMock()
-        result = pdf2md.call_api(
-            sample_config, logger, "base64data", "test.pdf"
+        result = pdf2md.call_file_parse_api(
+            sample_config, logger, test_file, 0, 4, "test.pdf",
         )
 
         assert result is None
         assert mock_post.call_count == sample_config["max_retries"]
 
     @patch("pdf2md.requests.post")
-    def test_no_retry_on_json_decode_error(self, mock_post, sample_config):
+    def test_no_retry_on_json_decode_error(self, mock_post, sample_config, tmp_dir):
         """Should not retry on JSON decode errors."""
         from requests.exceptions import JSONDecodeError
         mock_post.side_effect = JSONDecodeError("Bad JSON", MagicMock(), 0)
 
+        test_file = os.path.join(tmp_dir, "test.pdf")
+        with open(test_file, "wb") as f:
+            f.write(b"test")
+
         logger = MagicMock()
-        result = pdf2md.call_api(
-            sample_config, logger, "base64data", "test.pdf"
+        result = pdf2md.call_file_parse_api(
+            sample_config, logger, test_file, 0, 4, "test.pdf",
         )
 
         assert result is None
-        assert mock_post.call_count == 1  # Only one attempt, no retry
+        assert mock_post.call_count == 1
 
     @patch("pdf2md.requests.post")
-    def test_retries_on_connection_error(self, mock_post, sample_config):
+    def test_retries_on_connection_error(self, mock_post, sample_config, tmp_dir):
         """Should retry on ConnectionError."""
         import requests.exceptions
         mock_post.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
+        test_file = os.path.join(tmp_dir, "test.pdf")
+        with open(test_file, "wb") as f:
+            f.write(b"test")
+
         logger = MagicMock()
-        result = pdf2md.call_api(
-            sample_config, logger, "base64data", "test.pdf"
+        result = pdf2md.call_file_parse_api(
+            sample_config, logger, test_file, 0, 4, "test.pdf",
         )
 
         assert result is None
         assert mock_post.call_count == sample_config["max_retries"]
 
+
+# ============================================================
+# call_summarize_api Tests
+# ============================================================
+
+class TestCallSummarizeApi:
+    """Tests for call_summarize_api function."""
+
     @patch("pdf2md.requests.post")
-    def test_retries_on_timeout(self, mock_post, sample_config):
-        """Should retry on Timeout."""
-        import requests.exceptions
-        mock_post.side_effect = requests.exceptions.Timeout("Request timed out")
+    def test_success_returns_summary(self, mock_post, sample_config):
+        """Should return summary text on successful response."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "This is a summary."}}],
+        }
+        mock_post.return_value = mock_response
 
         logger = MagicMock()
-        result = pdf2md.call_api(
-            sample_config, logger, "base64data", "test.pdf"
-        )
+        result = pdf2md.call_summarize_api(sample_config, logger, "chunk content")
 
-        assert result is None
-        assert mock_post.call_count == sample_config["max_retries"]
+        assert result == "This is a summary."
+        mock_post.assert_called_once()
+        call_kwargs = mock_post.call_args[1]
+        assert call_kwargs["json"]["model"] == "gpt-4o"
+        assert call_kwargs["json"]["messages"][0]["role"] == "user"
 
     @patch("pdf2md.requests.post")
-    def test_logs_attempt_number(self, mock_post, sample_config):
-        """Should log the attempt number."""
+    def test_empty_on_no_choices(self, mock_post, sample_config):
+        """Should return empty string when response has no choices."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"choices": []}
+        mock_post.return_value = mock_response
+
+        logger = MagicMock()
+        result = pdf2md.call_summarize_api(sample_config, logger, "content")
+
+        assert result == ""
+
+    @patch("pdf2md.requests.post")
+    def test_empty_on_http_error(self, mock_post, sample_config):
+        """Should return empty string on HTTP error after retries."""
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_post.return_value = mock_response
+
+        logger = MagicMock()
+        result = pdf2md.call_summarize_api(sample_config, logger, "content")
+
+        assert result == ""
+
+    @patch("pdf2md.requests.post")
+    def test_authorization_header_when_key_present(self, mock_post, sample_config):
+        """Should include Authorization header when api_key is set."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "summary"}}],
+        }
+        mock_post.return_value = mock_response
+
+        logger = MagicMock()
+        pdf2md.call_summarize_api(sample_config, logger, "content")
+
+        call_kwargs = mock_post.call_args[1]
+        assert "Authorization" in call_kwargs["headers"]
+        assert call_kwargs["headers"]["Authorization"] == "Bearer test-key"
+
+    @patch("pdf2md.requests.post")
+    def test_no_authorization_header_when_key_empty(self, mock_post, sample_config):
+        """Should not include Authorization header when api_key is empty."""
+        sample_config["summarize_api_key"] = ""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "summary"}}],
+        }
+        mock_post.return_value = mock_response
+
+        logger = MagicMock()
+        pdf2md.call_summarize_api(sample_config, logger, "content")
+
+        call_kwargs = mock_post.call_args[1]
+        assert "Authorization" not in call_kwargs["headers"]
+
+    @patch("pdf2md.requests.post")
+    def test_retries_on_connection_error(self, mock_post, sample_config):
+        """Should retry on connection errors."""
         import requests.exceptions
         mock_post.side_effect = requests.exceptions.ConnectionError("refused")
 
         logger = MagicMock()
-        pdf2md.call_api(sample_config, logger, "data", "test.pdf")
+        result = pdf2md.call_summarize_api(sample_config, logger, "content")
 
-        # Check that log calls include attempt numbers
-        info_calls = [c[0][0] for c in logger.info.call_args_list]
-        assert any("attempt" in msg for msg in info_calls)
+        assert result == ""
+        assert mock_post.call_count == sample_config["max_retries"]
 
 
 # ============================================================
@@ -440,6 +513,51 @@ class TestGetUniquePath:
 
 
 # ============================================================
+# get_unique_dir Tests
+# ============================================================
+
+class TestGetUniqueDir:
+    """Tests for get_unique_dir function."""
+
+    def test_returns_original_when_no_collision(self, tmp_dir):
+        """Should return stem_name_md when directory does not exist."""
+        result = pdf2md.get_unique_dir(tmp_dir, "report")
+        assert result == os.path.join(tmp_dir, "report_md")
+
+    def test_generates_suffix_on_collision(self, tmp_dir):
+        """Should generate a unique path with suffix when directory exists."""
+        existing = os.path.join(tmp_dir, "report_md")
+        os.makedirs(existing)
+
+        result = pdf2md.get_unique_dir(tmp_dir, "report")
+        assert result != existing
+        assert result.startswith(os.path.join(tmp_dir, "report_md_"))
+        assert not os.path.exists(result)
+
+    def test_generates_different_suffixes(self, tmp_dir):
+        """Should generate different suffixes for multiple collisions."""
+        base = os.path.join(tmp_dir, "report_md")
+        os.makedirs(base)
+
+        path1 = pdf2md.get_unique_dir(tmp_dir, "report")
+        path2 = pdf2md.get_unique_dir(tmp_dir, "report")
+
+        assert path1 != path2
+
+    def test_suffix_is_5_lowercase_chars(self, tmp_dir):
+        """The random suffix should be exactly 5 lowercase letters."""
+        base = os.path.join(tmp_dir, "report_md")
+        os.makedirs(base)
+
+        result = pdf2md.get_unique_dir(tmp_dir, "report")
+        basename = os.path.basename(result)
+        suffix = basename.replace("report_md_", "")
+        assert len(suffix) == 5
+        assert suffix.islower()
+        assert suffix.isalpha()
+
+
+# ============================================================
 # Integration Tests (main flow)
 # ============================================================
 
@@ -464,30 +582,54 @@ class TestIntegration:
 
     @patch("pdf2md.load_config")
     @patch("pdf2md.requests.post")
-    def test_full_flow_with_api_success(self, mock_post, mock_load_config, tmp_dir, sample_api_response):
-        """Should complete full workflow: file -> base64 -> API -> write output."""
+    def test_full_flow_with_api_success(self, mock_post, mock_load_config, tmp_dir):
+        """Should complete full workflow: file -> parse API -> chunk files + summary."""
         # Create a test file
         test_file = os.path.join(tmp_dir, "test.txt")
         with open(test_file, "wb") as f:
             f.write(b"# Test PDF Content")
 
-        # Setup config to be returned by mocked load_config
+        # Setup config
         config = {
-            "api_url": "http://example.com/convert",
+            "api_url": "http://example.com/file_parse",
             "client_id": "test",
             "max_retries": 1,
             "retry_delay": 0,
             "timeout": 5,
             "output_dir": os.path.join(tmp_dir, "output"),
             "log_dir": os.path.join(tmp_dir, "logs"),
+            "page_num": 5,
+            "summarize_api_url": "http://example.com/v1/chat/completions",
+            "summarize_api_key": "test-key",
+            "summarize_model": "gpt-4o",
+            "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
         }
         mock_load_config.return_value = config
 
-        # Mock API response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = sample_api_response
-        mock_post.return_value = mock_response
+        # Mock file_parse API response (first call returns content)
+        parse_response_1 = MagicMock()
+        parse_response_1.status_code = 200
+        parse_response_1.json.return_value = {
+            "status": "completed",
+            "results": {"0": {"md_content": "# Test Document\n\nThis is test content."}},
+        }
+
+        # Second call returns empty results (end of document)
+        parse_response_2 = MagicMock()
+        parse_response_2.status_code = 200
+        parse_response_2.json.return_value = {
+            "status": "completed",
+            "results": {},
+        }
+
+        # Mock summarize API response
+        summarize_response = MagicMock()
+        summarize_response.status_code = 200
+        summarize_response.json.return_value = {
+            "choices": [{"message": {"content": "This is a test summary."}}],
+        }
+
+        mock_post.side_effect = [parse_response_1, parse_response_2, summarize_response]
 
         # Run with mocked argv
         with patch("sys.argv", ["pdf2md.py", test_file]):
@@ -495,14 +637,28 @@ class TestIntegration:
                 pdf2md.main()
             assert exc_info.value.code == 0  # Success
 
-        # Verify output file was created
+        # Verify output directory structure
         output_dir = config["output_dir"]
-        output_file = os.path.join(output_dir, "test.md")
-        assert os.path.isfile(output_file)
+        file_output_dir = os.path.join(output_dir, "test_md")
+        assert os.path.isdir(file_output_dir)
 
-        with open(output_file, "r", encoding="utf-8") as f:
+        # Verify chunk file was created
+        chunk_file = os.path.join(file_output_dir, "test_0-4.md")
+        assert os.path.isfile(chunk_file)
+
+        with open(chunk_file, "r", encoding="utf-8") as f:
             content = f.read()
         assert "# Test Document" in content
+
+        # Verify summary file was created
+        summary_file = os.path.join(file_output_dir, "test.md")
+        assert os.path.isfile(summary_file)
+
+        with open(summary_file, "r", encoding="utf-8") as f:
+            summary_content = f.read()
+        assert "# test Summary" in summary_content
+        assert "This is a test summary." in summary_content
+        assert "test_0-4.md" in summary_content
 
     @patch("pdf2md.load_config")
     @patch("pdf2md.requests.post")
@@ -512,15 +668,20 @@ class TestIntegration:
         with open(test_file, "wb") as f:
             f.write(b"test content")
 
-        # Setup config to be returned by mocked load_config
+        # Setup config
         config = {
-            "api_url": "http://example.com/convert",
+            "api_url": "http://example.com/file_parse",
             "client_id": "test",
             "max_retries": 1,
             "retry_delay": 0,
             "timeout": 5,
             "output_dir": os.path.join(tmp_dir, "output"),
             "log_dir": os.path.join(tmp_dir, "logs"),
+            "page_num": 5,
+            "summarize_api_url": "http://example.com/v1/chat/completions",
+            "summarize_api_key": "test-key",
+            "summarize_model": "gpt-4o",
+            "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
         }
         mock_load_config.return_value = config
 
@@ -533,7 +694,79 @@ class TestIntegration:
                 pdf2md.main()
             assert exc_info.value.code == 1  # Failure
 
-        # No markdown output files should be created
+    @patch("pdf2md.load_config")
+    @patch("pdf2md.requests.post")
+    def test_pagination_creates_multiple_chunks(self, mock_post, mock_load_config, tmp_dir):
+        """Should create multiple chunk files when document spans multiple page ranges."""
+        test_file = os.path.join(tmp_dir, "report.txt")
+        with open(test_file, "wb") as f:
+            f.write(b"Page content")
+
+        config = {
+            "api_url": "http://example.com/file_parse",
+            "client_id": "test",
+            "max_retries": 1,
+            "retry_delay": 0,
+            "timeout": 5,
+            "output_dir": os.path.join(tmp_dir, "output"),
+            "log_dir": os.path.join(tmp_dir, "logs"),
+            "page_num": 5,  # 5 pages per chunk
+            "summarize_api_url": "http://example.com/v1/chat/completions",
+            "summarize_api_key": "test-key",
+            "summarize_model": "gpt-4o",
+            "summarize_prompt": "Summarize: {chunks_info}\n\nSummary:",
+        }
+        mock_load_config.return_value = config
+
+        # Simulate: first call returns content, second call returns empty results (end of doc)
+        parse_response_1 = MagicMock()
+        parse_response_1.status_code = 200
+        parse_response_1.json.return_value = {
+            "status": "completed",
+            "results": {"0": {"md_content": "# Pages 0-4"}},
+        }
+
+        parse_response_2 = MagicMock()
+        parse_response_2.status_code = 200
+        parse_response_2.json.return_value = {
+            "status": "completed",
+            "results": {"0": {"md_content": "# Pages 5-9"}},
+        }
+
+        parse_response_3 = MagicMock()
+        parse_response_3.status_code = 200
+        parse_response_3.json.return_value = {
+            "status": "completed",
+            "results": {},  # Empty results = no more content
+        }
+
+        summarize_response = MagicMock()
+        summarize_response.status_code = 200
+        summarize_response.json.return_value = {
+            "choices": [{"message": {"content": "Summary of all pages."}}],
+        }
+
+        mock_post.side_effect = [
+            parse_response_1, parse_response_2, parse_response_3, summarize_response,
+        ]
+
+        with patch("sys.argv", ["pdf2md.py", test_file]):
+            with pytest.raises(SystemExit) as exc_info:
+                pdf2md.main()
+            assert exc_info.value.code == 0
+
+        # Verify both chunk files exist
         output_dir = config["output_dir"]
-        md_files = [f for f in os.listdir(output_dir) if f.endswith(".md")] if os.path.exists(output_dir) else []
-        assert len(md_files) == 0
+        file_output_dir = os.path.join(output_dir, "report_md")
+
+        chunk1 = os.path.join(file_output_dir, "report_0-4.md")
+        chunk2 = os.path.join(file_output_dir, "report_5-9.md")
+        assert os.path.isfile(chunk1)
+        assert os.path.isfile(chunk2)
+
+        # Verify summary references both chunks
+        summary_file = os.path.join(file_output_dir, "report.md")
+        with open(summary_file, "r", encoding="utf-8") as f:
+            summary_content = f.read()
+        assert "report_0-4.md" in summary_content
+        assert "report_5-9.md" in summary_content

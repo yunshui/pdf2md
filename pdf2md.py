@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """pdf2md - Convert PDF and document files to Markdown via a remote conversion API.
 
-This script accepts a PDF, DOCX, DOC, or TXT file or directory, sends them to a
-remote conversion API, and saves the resulting Markdown output.
+This script accepts a PDF, DOCX, DOC, or TXT file or directory, sends them to
+a remote conversion API, and saves the resulting Markdown output.
 """
 
 import argparse
-import base64
 import datetime
 import glob
 import json
@@ -21,13 +20,23 @@ import requests
 
 
 DEFAULT_CONFIG = {
-    "api_url": "http://123.192.49.73:8000/convert2markdown",
+    "api_url": "http://123.192.49.73:8000/file_parse",
     "client_id": "bf-mkd",
     "max_retries": 3,
     "retry_delay": 2,
     "timeout": 120,
     "output_dir": "output",
     "log_dir": "logs",
+    "page_num": 5,
+    "summarize_api_url": "http://127.0.0.1:8000/v1/chat/completions",
+    "summarize_api_key": "",
+    "summarize_model": "gpt-4o",
+    "summarize_prompt": (
+        "You are a document summarization assistant. Given the following markdown "
+        "content from different page ranges of a document, create a concise summary "
+        "(within 500 words). Include key points and important details. For specifics, "
+        "refer to the individual page files.\n\n{chunks_info}\n\nSummary:"
+    ),
 }
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
@@ -72,39 +81,29 @@ def resolve_files(path, logger):
     return []
 
 
-def file_to_base64(file_path):
-    """Read a file and return its base64-encoded content.
-
-    Args:
-        file_path: Path to the file to encode.
-
-    Returns:
-        str: The base64-encoded content of the file.
-
-    Raises:
-        OSError: If the file cannot be read.
-    """
-    with open(file_path, "rb") as f:
-        content = f.read()
-    return base64.b64encode(content).decode("ascii")
-
-
-def call_api(config, logger, base64_content, file_name):
-    """POST file to conversion API with retry. Returns response dict or None on failure."""
+def call_file_parse_api(config, logger, file_path, start_page, end_page, file_name):
+    """POST file to file_parse API with page range. Returns response dict or None on failure."""
     url = config["api_url"]
-    headers = {
-        "client_id": config["client_id"],
-        "Content-Type": "application/json",
-    }
-    body = {"files": [base64_content]}
+    headers = {"client_id": config["client_id"]}
     max_retries = config["max_retries"]
     timeout = config["timeout"]
 
     for attempt in range(1, max_retries + 1):
-        logger.info("Calling API for %s (attempt %d/%d)", file_name, attempt, max_retries)
+        logger.info(
+            "Calling API for %s pages %d-%d (attempt %d/%d)",
+            file_name, start_page, end_page, attempt, max_retries,
+        )
         start = time.time()
         try:
-            resp = requests.post(url, json=body, headers=headers, timeout=timeout)
+            with open(file_path, "rb") as f:
+                files = {"files": (file_name, f, "application/octet-stream")}
+                data = {
+                    "start_page_id": str(start_page),
+                    "end_page_id": str(end_page),
+                }
+                resp = requests.post(
+                    url, files=files, data=data, headers=headers, timeout=timeout,
+                )
             elapsed = time.time() - start
 
             if resp.status_code != 200:
@@ -114,9 +113,9 @@ def call_api(config, logger, base64_content, file_name):
                     continue
                 return None
 
-            data = resp.json()
-            logger.info("API response in %.1fs, status=%s", elapsed, data.get("status"))
-            return data
+            resp_data = resp.json()
+            logger.info("API response in %.1fs, status=%s", elapsed, resp_data.get("status"))
+            return resp_data
 
         except (requests.exceptions.JSONDecodeError, ValueError):
             elapsed = time.time() - start
@@ -131,6 +130,60 @@ def call_api(config, logger, base64_content, file_name):
             return None
 
     return None
+
+
+def call_summarize_api(config, logger, chunks_info):
+    """Call LLM summarization API. Returns summary text or empty string on failure."""
+    url = config["summarize_api_url"]
+    api_key = config["summarize_api_key"]
+    model = config["summarize_model"]
+    prompt_template = config["summarize_prompt"]
+    max_retries = config["max_retries"]
+    timeout = config["timeout"]
+
+    prompt = prompt_template.format(chunks_info=chunks_info)
+    body = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    for attempt in range(1, max_retries + 1):
+        logger.info("Calling summarize API (attempt %d/%d)", attempt, max_retries)
+        try:
+            resp = requests.post(url, json=body, headers=headers, timeout=timeout)
+            if resp.status_code != 200:
+                logger.error("Summarize API HTTP %d (attempt %d)", resp.status_code, attempt)
+                if attempt < max_retries:
+                    time.sleep(config["retry_delay"])
+                    continue
+                return ""
+
+            data = resp.json()
+            # OpenAI-compatible: choices[0].message.content
+            choices = data.get("choices", [])
+            if choices:
+                summary = choices[0].get("message", {}).get("content", "")
+                logger.info("Summarize API returned %d chars", len(summary))
+                return summary
+            logger.error("Summarize API returned no choices")
+            return ""
+
+        except (requests.exceptions.JSONDecodeError, ValueError):
+            logger.error("Invalid JSON from summarize API (no retry)")
+            return ""
+        except requests.exceptions.RequestException as e:
+            logger.error("Summarize API request failed: %s (attempt %d)", e, attempt)
+            if attempt < max_retries:
+                time.sleep(config["retry_delay"])
+                continue
+            return ""
+
+    return ""
 
 
 def extract_md_content(response_data):
@@ -155,6 +208,18 @@ def get_unique_path(output_dir, base_name):
         suffix = ''.join(random.choice(chars) for _ in range(5))
         path = os.path.join(output_dir, f"{base_name}_{suffix}.md")
     return path
+
+
+def get_unique_dir(parent_dir, stem_name):
+    """Return unique directory path. If exists, append _<5 random chars> and retry on collision."""
+    dir_path = os.path.join(parent_dir, f"{stem_name}_md")
+    if not os.path.exists(dir_path):
+        return dir_path
+    chars = string.ascii_lowercase
+    while os.path.exists(dir_path):
+        suffix = ''.join(random.choice(chars) for _ in range(5))
+        dir_path = os.path.join(parent_dir, f"{stem_name}_md_{suffix}")
+    return dir_path
 
 
 def load_config(script_dir):
@@ -207,6 +272,11 @@ def load_config(script_dir):
         "timeout": (int, float),
         "output_dir": str,
         "log_dir": str,
+        "page_num": int,
+        "summarize_api_url": str,
+        "summarize_api_key": str,
+        "summarize_model": str,
+        "summarize_prompt": str,
     }
     bad_types = []
     for key, expected_type in type_checks.items():
@@ -299,7 +369,7 @@ def main():
     logger.info("pdf2md started. Config loaded from conf/setting.json")
     logger.debug("Configuration: %s", json.dumps(config))
 
-    # Resolve files and encode them in base64.
+    # Resolve files.
     logger.info("Processing path: %s", args.path)
     files = resolve_files(args.path, logger)
     logger.info("Found %d file(s) to process.", len(files))
@@ -315,46 +385,92 @@ def main():
 
     for file_path in files:
         file_ok = True
+        filename = os.path.basename(file_path)
+        stem_name = os.path.splitext(filename)[0]
+        page_num = config["page_num"]
+
         try:
             file_size = os.path.getsize(file_path)
-            encoded = file_to_base64(file_path)
-            logger.info(
-                "Encoded %s (%d bytes, base64 size: %d).",
-                file_path,
-                file_size,
-                len(encoded),
-            )
+            logger.info("Processing %s (%d bytes)", file_path, file_size)
         except OSError as e:
             logger.error("Failed to read file %s: %s", file_path, e)
             failure_count += 1
             continue
 
-        # Call the conversion API with retry logic.
-        filename = os.path.basename(file_path)
-        result = call_api(config, logger, encoded, filename)
-        if result is not None:
-            logger.info("API call succeeded for %s", filename)
-            stem_name = os.path.splitext(filename)[0]
+        # Create per-file output directory: {output_dir}/{stem_name}_md/
+        file_output_dir = get_unique_dir(config["output_dir"], stem_name)
+        os.makedirs(file_output_dir, exist_ok=True)
+        logger.info("Output directory: %s", file_output_dir)
+
+        # Paginated API calls
+        chunk_ranges = []  # List of (start, end, md_content)
+        start_page = 0
+
+        while True:
+            end_page = start_page + page_num - 1
+            result = call_file_parse_api(
+                config, logger, file_path, start_page, end_page, filename,
+            )
+            if result is None:
+                logger.error("API call failed for %s pages %d-%d", filename, start_page, end_page)
+                file_ok = False
+                break
+
             md_items = extract_md_content(result)
             if not md_items:
-                logger.warning("API returned no markdown content for %s", filename)
-            output_dir = config["output_dir"]
-            for index, md_content in md_items:
-                try:
-                    out_path = get_unique_path(output_dir, stem_name)
-                    with open(out_path, "w", encoding="utf-8") as f:
-                        f.write(md_content)
-                    out_size = os.path.getsize(out_path)
-                    out_basename = os.path.basename(out_path)
-                    logger.info(
-                        "Wrote output %s (%d bytes) for %s (index %s)",
-                        out_basename, out_size, filename, index,
-                    )
-                except OSError as e:
-                    logger.error("Failed to write output for %s (index %s): %s", filename, index, e)
-                    file_ok = False
-        else:
-            logger.error("API call failed for %s after all retries", filename)
+                logger.info(
+                    "No more content from API for %s at pages %d-%d; stopping pagination.",
+                    filename, start_page, end_page,
+                )
+                break
+
+            # Write chunk file: {stem_name}_{start}-{end}.md
+            chunk_basename = f"{stem_name}_{start_page}-{end_page}"
+            out_path = os.path.join(file_output_dir, f"{chunk_basename}.md")
+            chunk_md = md_items[0][1] if md_items else ""
+            try:
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(chunk_md)
+                out_size = os.path.getsize(out_path)
+                logger.info(
+                    "Wrote output %s (%d bytes) for %s",
+                    os.path.basename(out_path), out_size, filename,
+                )
+            except OSError as e:
+                logger.error("Failed to write output for %s: %s", filename, e)
+                file_ok = False
+                break
+
+            chunk_ranges.append((start_page, end_page, chunk_basename, chunk_md))
+            start_page = end_page + 1
+
+        if not file_ok:
+            failure_count += 1
+            continue
+
+        # Build chunks_info for summarization
+        chunks_info_parts = [
+            f"### Pages {s}-{e}\n\n{md}" for s, e, _, md in chunk_ranges
+        ]
+        chunks_info = "\n\n---\n\n".join(chunks_info_parts)
+
+        # Call summarize API
+        summary_text = call_summarize_api(config, logger, chunks_info)
+
+        # Write summary file: {stem_name}.md
+        summary_path = os.path.join(file_output_dir, f"{stem_name}.md")
+        try:
+            with open(summary_path, "w", encoding="utf-8") as f:
+                f.write(f"# {stem_name} Summary\n\n")
+                f.write("> AI-generated summary\n\n")
+                f.write(f"{summary_text}\n\n")
+                f.write("## Page Chunks\n\n")
+                for s, e, basename, _ in chunk_ranges:
+                    chunk_file = f"{basename}.md"
+                    f.write(f"- [{chunk_file}]({chunk_file})\n")
+            logger.info("Wrote summary file %s", summary_path)
+        except OSError as e:
+            logger.error("Failed to write summary file for %s: %s", filename, e)
             file_ok = False
 
         if file_ok:

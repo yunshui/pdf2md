@@ -14,59 +14,57 @@ pdf2md 本身是一个本地命令行工具，不包含服务端后端。它**�
 
 ## 2. 外部 API 接口
 
-### 2.1 基本信息
+### 2.1 文件解析 API（分页）
 
 | 项目 | 值 |
 |------|------|
 | 协议 | HTTP |
 | 方法 | POST |
-| 路径 | `/convert2markdown` |
+| 路径 | `/file_parse` |
 | 默认地址 | `http://123.192.49.73:8000` |
-| Content-Type | `application/json` |
+| Content-Type | `multipart/form-data` |
 | 认证 | 请求头 `client_id` |
 
 ### 2.2 请求格式
 
 ```http
-POST /convert2markdown HTTP/1.1
+POST /file_parse HTTP/1.1
 Host: 123.192.49.73:8000
 client_id: bf-mkd
-Content-Type: application/json
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
 
-{
-  "files": [
-    "<base64-encoded-file-content-1>",
-    "<base64-encoded-file-content-2>"
-  ]
-}
+------WebKitFormBoundary
+Content-Disposition: form-data; name="files"; filename="report.pdf"
+Content-Type: application/octet-stream
+
+<file-binary-content>
+------WebKitFormBoundary
+Content-Disposition: form-data; name="start_page_id"
+
+0
+------WebKitFormBoundary
+Content-Disposition: form-data; name="end_page_id"
+
+4
+------WebKitFormBoundary--
 ```
 
 **字段说明**:
 
 | 字段 | 类型 | 必需 | 说明 |
 |------|------|------|------|
-| `files` | `array[string]` | 是 | Base64 编码的文件内容数组。每次请求发送一个文件（单元素数组）。 |
-
-**Base64 编码**:
-- 读取文件二进制内容
-- 使用标准 Base64 编码（`base64.b64encode()`）
-- 解码为 ASCII 字符串
+| `files` | file | 是 | 文件二进制内容（multipart form-data） |
+| `start_page_id` | string | 是 | 起始页码（0-based） |
+| `end_page_id` | string | 是 | 结束页码（0-based） |
 
 ### 2.3 响应格式
 
 ```json
 {
-  "task_id": "a65f4a9a-aa11-4a99-b004-5d9d2b3f17a1",
   "status": "completed",
-  "backend": "hybrid-auto-engine",
-  "file_names": ["file_0"],
-  "version": "3.1.8",
   "results": {
     "0": {
       "md_content": "# Document Title\n\nConverted markdown content..."
-    },
-    "1": {
-      "md_content": "# Second Page\n\n..."
     }
   }
 }
@@ -76,13 +74,49 @@ Content-Type: application/json
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `task_id` | string | 任务唯一标识（UUID 格式） |
 | `status` | string | 任务状态（`completed`, `failed` 等） |
-| `backend` | string | 使用的转换引擎名称 |
-| `file_names` | array[string] | API 返回的文件名称列表 |
-| `version` | string | API 版本号 |
-| `results` | object | 转换结果，键为索引字符串（"0", "1"...），值为包含 `md_content` 的对象 |
+| `results` | object | 转换结果，键为索引字符串（"0", "1"...） |
 | `results.{index}.md_content` | string | 转换后的 Markdown 文本内容 |
+
+**分页终止条件**: 当 `results` 为空对象 `{}` 时表示无更多内容。
+
+### 2.4 LLM 摘要 API
+
+| 项目 | 值 |
+|------|------|
+| 协议 | HTTP |
+| 方法 | POST |
+| 路径 | `/v1/chat/completions` |
+| Content-Type | `application/json` |
+| 认证 | `Authorization: Bearer {api_key}`（可选） |
+
+**请求格式**:
+
+```json
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user",
+      "content": "You are a document summarization assistant...\n\n### Pages 0-4\n\n# Document Title\n...\n\nSummary:"
+    }
+  ]
+}
+```
+
+**响应格式**:
+
+```json
+{
+  "choices": [
+    {
+      "message": {
+        "content": "This is a concise summary of the document..."
+      }
+    }
+  ]
+}
+```
 
 ### 2.4 可能的 HTTP 状态码
 
@@ -106,33 +140,46 @@ Content-Type: application/json
 
 ## 3. 本地处理逻辑
 
-### 3.1 文件读取与编码
+### 3.1 文件读取与 multipart 上传
 
 ```
-磁盘文件 → 读取二进制内容 (rb) → base64.b64encode() → decode("ascii") → Base64 字符串
+磁盘文件 → 读取二进制内容 (rb) → multipart POST {files, start_page_id, end_page_id}
 ```
 
 - 读取整个文件到内存
-- Base64 编码后大小约为原始的 133%
+- 使用 multipart form-data 格式发送，附带页码参数
 - 无文件大小限制（当前版本）
 
-### 3.2 API 客户端实现
+### 3.2 文件解析 API 客户端
 
 ```python
-def call_api(config, logger, base64_content, file_name):
+def call_file_parse_api(config, logger, file_path, start_page, end_page, file_name):
 ```
 
 **流程**:
-1. 构建请求体 `{"files": [base64_content]}`
-2. 设置请求头 `client_id` 和 `Content-Type`
+1. 构建 multipart 请求：文件 + `start_page_id` + `end_page_id`
+2. 设置请求头 `client_id`
 3. 进入重试循环（1 到 max_retries）
 4. 发送 POST 请求，记录耗时
 5. 根据响应状态决定：成功返回、重试、或标记失败
 6. 重试间隔使用 `time.sleep(config["retry_delay"])`
 
-**超时配置**: 使用 `timeout=config["timeout"]`（默认 120 秒），包括连接超时和读取超时。
+**超时配置**: 使用 `timeout=config["timeout"]`（默认 120 秒）。
 
-### 3.3 响应解析
+### 3.3 LLM 摘要 API 客户端
+
+```python
+def call_summarize_api(config, logger, chunks_info):
+```
+
+**流程**:
+1. 将 `{chunks_info}` 替换到提示模板中
+2. 构建 OpenAI 兼容格式的请求体
+3. 如果配置了 api_key，添加 `Authorization: Bearer` 头
+4. 进入重试循环
+5. 从 `choices[0].message.content` 提取摘要文本
+
+### 3.4 响应解析
 
 ```python
 def extract_md_content(response_data):
@@ -143,17 +190,36 @@ def extract_md_content(response_data):
 - 对非 dict 类型的 result 值进行类型保护（跳过）
 - 对缺失 `md_content` 键的项使用空字符串默认值
 
-### 3.4 文件写入
+### 3.5 目录和文件写入
 
 ```python
+def get_unique_dir(parent_dir, stem_name):
 def get_unique_path(output_dir, base_name):
 ```
 
-**流程**:
-1. 尝试 `{output_dir}/{base_name}.md`
-2. 如果文件已存在，生成 5 位随机小写字母后缀
-3. 重复直到找到不存在的文件名
-4. 使用 UTF-8 编码写入文件
+**输出目录流程**:
+1. 创建 `{output_dir}/{stem_name}_md/` 目录
+2. 如果目录已存在，生成 5 位随机小写字母后缀（如 `report_md_abcde`）
+
+**chunk 文件**:
+- 命名格式: `{stem_name}_{start}-{end}.md`（如 `report_0-4.md`）
+- 使用 UTF-8 编码写入
+
+**summary 文件**:
+- 命名格式: `{stem_name}.md`（如 `report.md`）
+- 格式:
+  ```markdown
+  # {stem_name} Summary
+
+  > AI-generated summary
+
+  {LLM summary text}
+
+  ## Page Chunks
+
+  - [{stem_name}_0-4.md]({stem_name}_0-4.md)
+  - [{stem_name}_5-9.md]({stem_name}_5-9.md)
+  ```
 
 ---
 
@@ -197,16 +263,21 @@ def get_unique_path(output_dir, base_name):
 |------|------|------|
 | 程序启动 | INFO | `pdf2md started. Config loaded from conf/setting.json` |
 | 找到文件 | INFO | `Found 3 file(s) to process.` |
-| 编码成功 | INFO | `Encoded report.pdf (1048576 bytes, base64 size: 1398102).` |
-| API 调用中 | INFO | `Calling API for report.pdf (attempt 1/3)` |
+| 文件处理中 | INFO | `Processing report.pdf (1048576 bytes)` |
+| 输出目录创建 | INFO | `Output directory: output/report_md` |
+| API 调用中 | INFO | `Calling API for report.pdf pages 0-4 (attempt 1/3)` |
 | API 成功 | INFO | `API response in 5.2s, status=completed` |
-| 写入输出 | INFO | `Wrote output report.md (5230 bytes) for report.pdf (index 0)` |
+| 写入 chunk | INFO | `Wrote output report_0-4.md (5230 bytes) for report.pdf` |
+| 分页终止 | INFO | `No more content from API for report.pdf at pages 5-9` |
+| 调用摘要 | INFO | `Calling summarize API (attempt 1/3)` |
+| 摘要返回 | INFO | `Summarize API returned 350 chars` |
+| 写入摘要 | INFO | `Wrote summary file output/report_md/report.md` |
 | 汇总信息 | INFO | `Processed 3 files: 2 success, 1 failed` |
 | 扩展名不支持 | WARNING | `File has unsupported extension '.json': data.json` |
-| 无 Markdown 内容 | WARNING | `API returned no markdown content for report.pdf` |
 | 文件读取失败 | ERROR | `Failed to read file report.pdf: Permission denied` |
 | API 请求失败 | ERROR | `Request failed after 32.0s: ConnectionError (attempt 1)` |
-| 写入失败 | ERROR | `Failed to write output for report.pdf (index 0): Disk full` |
+| 摘要 API 错误 | ERROR | `Summarize API HTTP 500 (attempt 1)` |
+| 写入失败 | ERROR | `Failed to write summary file for report.pdf: Disk full` |
 
 ---
 
@@ -217,7 +288,7 @@ def get_unique_path(output_dir, base_name):
 1. 查找 `conf/setting.json`（相对于脚本目录）
 2. 不存在 → 创建目录和默认文件 → 返回默认值
 3. 存在 → 解析 JSON
-4. 验证所有必需键存在
+4. 验证所有必需键存在（12 个字段）
 5. 验证所有值类型正确
 6. 返回配置字典
 

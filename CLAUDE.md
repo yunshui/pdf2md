@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**pdf2md** — CLI tool for converting PDF/DOCX/DOC/TXT files to Markdown via a remote API.
+**pdf2md** — CLI tool for converting PDF/DOCX/DOC/TXT files to Markdown via a remote paginated API with LLM summarization.
 
 ## Tech Stack
 
@@ -29,23 +29,36 @@ Config file: `conf/setting.json` (created with defaults on first run if missing)
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `api_url` | `http://123.192.49.73:8000/convert2markdown` | API endpoint |
+| `api_url` | `http://123.192.49.73:8000/file_parse` | Paginated parse API endpoint |
 | `client_id` | `bf-mkd` | API client identifier header |
 | `max_retries` | `3` | Max retry attempts on failure |
 | `retry_delay` | `2` | Seconds between retries |
 | `timeout` | `120` | Request timeout in seconds |
 | `output_dir` | `output` | Output directory for `.md` files |
 | `log_dir` | `logs` | Log directory |
+| `page_num` | `5` | Pages per API request |
+| `summarize_api_url` | `http://127.0.0.1:8000/v1/chat/completions` | LLM summary API endpoint |
+| `summarize_api_key` | `""` | LLM API key (optional) |
+| `summarize_model` | `gpt-4o` | LLM model name |
+| `summarize_prompt` | *(built-in template)* | LLM summary prompt template |
 
 ## Output and Logs
 
-- **Output**: `.md` files written to `output/` directory. If a file with the same name exists, a random 5-char suffix is appended (e.g., `report_abcde.md`).
+- **Output**: Each file gets a `{stem_name}_md/` directory under `output/`, containing:
+  - `{stem_name}.md` — LLM-generated summary with links to chunks
+  - `{stem_name}_{start}-{end}.md` — per-page-range markdown files
 - **Logs**: `logs/pdf2md-YYYYMMDD.log` — daily rotation, includes timing, attempt counts, errors.
 
 ## API Contract
 
-- **Request**: `POST {api_url}` with header `client_id: {client_id}`, body `{"files": [base64_string]}`
+### Paginated Parse API (`/file_parse`)
+- **Request**: `POST {api_url}` with header `client_id: {client_id}`, multipart form-data: `files` (binary file), `start_page_id`, `end_page_id`
 - **Response**: JSON with `status`, `results` dict containing `md_content` per item
+- **Termination**: Empty `results` (`{}`) means no more content
+
+### LLM Summarize API (`/v1/chat/completions`)
+- **Request**: `POST {summarize_api_url}` with `Authorization: Bearer {api_key}`, body `{"model": model, "messages": [{"role": "user", "content": prompt}]}`
+- **Response**: OpenAI-compatible format, summary from `choices[0].message.content`
 
 ## File Structure
 
