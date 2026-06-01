@@ -4,8 +4,7 @@ import json
 import os
 import sys
 import pytest
-from unittest.mock import patch, MagicMock, mock_open
-from io import StringIO
+from unittest.mock import patch, MagicMock
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -460,56 +459,6 @@ class TestExtractMdContent:
         result = pdf2md.extract_md_content(response)
         assert len(result) == 1
         assert result[0] == ("0", "valid")
-
-
-# ============================================================
-# get_unique_path Tests
-# ============================================================
-
-class TestGetUniquePath:
-    """Tests for get_unique_path function."""
-
-    def test_returns_original_when_no_collision(self, tmp_dir):
-        """Should return base_name.md when file does not exist."""
-        result = pdf2md.get_unique_path(tmp_dir, "report")
-        assert result == os.path.join(tmp_dir, "report.md")
-
-    def test_generates_suffix_on_collision(self, tmp_dir):
-        """Should generate a unique path with suffix when file exists."""
-        existing = os.path.join(tmp_dir, "report.md")
-        with open(existing, "w") as f:
-            f.write("existing")
-
-        result = pdf2md.get_unique_path(tmp_dir, "report")
-        assert result != existing
-        assert result.startswith(os.path.join(tmp_dir, "report_"))
-        assert result.endswith(".md")
-        assert not os.path.exists(result)
-
-    def test_generates_different_suffixes(self, tmp_dir):
-        """Should generate different suffixes for multiple collisions."""
-        base = os.path.join(tmp_dir, "report.md")
-        with open(base, "w") as f:
-            f.write("base")
-
-        path1 = pdf2md.get_unique_path(tmp_dir, "report")
-        path2 = pdf2md.get_unique_path(tmp_dir, "report")
-
-        assert path1 != path2
-
-    def test_suffix_is_5_lowercase_chars(self, tmp_dir):
-        """The random suffix should be exactly 5 lowercase letters."""
-        base = os.path.join(tmp_dir, "report.md")
-        with open(base, "w") as f:
-            f.write("base")
-
-        result = pdf2md.get_unique_path(tmp_dir, "report")
-        basename = os.path.basename(result)
-        # Format: report_XXXXX.md
-        suffix = basename.replace("report_", "").replace(".md", "")
-        assert len(suffix) == 5
-        assert suffix.islower()
-        assert suffix.isalpha()
 
 
 # ============================================================

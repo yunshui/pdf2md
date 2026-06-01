@@ -198,18 +198,6 @@ def extract_md_content(response_data):
     return items
 
 
-def get_unique_path(output_dir, base_name):
-    """Return unique file path. If file exists, append _<5 random chars> and retry on collision."""
-    path = os.path.join(output_dir, f"{base_name}.md")
-    if not os.path.exists(path):
-        return path
-    chars = string.ascii_lowercase
-    while os.path.exists(path):
-        suffix = ''.join(random.choice(chars) for _ in range(5))
-        path = os.path.join(output_dir, f"{base_name}_{suffix}.md")
-    return path
-
-
 def get_unique_dir(parent_dir, stem_name):
     """Return unique directory path. If exists, append _<5 random chars> and retry on collision."""
     dir_path = os.path.join(parent_dir, f"{stem_name}_md")

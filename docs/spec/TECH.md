@@ -98,7 +98,6 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
 | `call_file_parse_api(config, logger, file_path, start_page, end_page, file_name)` | 见参数 | `dict` / `None` | 调用分页解析 API（multipart + 重试） | requests, time |
 | `call_summarize_api(config, logger, chunks_info)` | 见参数 | `str` | 调用 LLM API 生成摘要 | requests, time |
 | `extract_md_content(response_data)` | `response_data: dict` | `list[tuple]` | 从 API 响应提取 Markdown | - |
-| `get_unique_path(output_dir, base_name)` | `output_dir: str, base_name: str` | `str` | 生成不冲突的文件路径 | os, random, string |
 | `get_unique_dir(parent_dir, stem_name)` | `parent_dir: str, stem_name: str` | `str` | 生成不冲突的目录路径 | os, random, string |
 | `main()` | - | - | 程序入口，编排全流程 | 以上所有函数 |
 

@@ -33,7 +33,7 @@ skills/pdf2md/
     ├── requirements.txt      # Runtime dependencies
     ├── requirements-dev.txt  # Dev dependencies (pytest)
     └── tests/
-        └── test_pdf2md.py    # Test suite (41 tests)
+        └── test_pdf2md.py    # Test suite (37 tests)
 ```
 
 To deploy on a new machine, copy the entire `scripts/` directory and run:
@@ -50,7 +50,7 @@ python pdf2md.py <file_or_directory_path>
 
 ### scripts/pdf2md.py
 
-Main CLI script — single file, ~440 lines, Python 3.7+.
+Main CLI script — single file, ~480 lines, Python 3.7+.
 
 **Functions:**
 
@@ -60,7 +60,6 @@ Main CLI script — single file, ~440 lines, Python 3.7+.
 | `call_file_parse_api(config, logger, file_path, start_page, end_page, file_name)` | POST file to paginated parse API with multipart form-data + retry |
 | `call_summarize_api(config, logger, chunks_info)` | Call LLM API to generate document summary |
 | `extract_md_content(response_data)` | Extract markdown from API response, list of (index, content) |
-| `get_unique_path(output_dir, base_name)` | Return unique output file path, suffix on collision |
 | `get_unique_dir(parent_dir, stem_name)` | Return unique output directory path, suffix on collision |
 | `load_config(script_dir)` | Load/create config from conf/setting.json |
 | `setup_logging(log_dir)` | Set up file + console logging, daily rotation |
@@ -80,7 +79,7 @@ pytest>=7.0.0
 
 ### scripts/tests/test_pdf2md.py
 
-41 tests covering all functions and integration flows.
+37 tests covering all functions and integration flows.
 
 **Test classes:**
 - `TestLoadConfig` (6) — config creation, loading, validation, new fields check
@@ -88,7 +87,6 @@ pytest>=7.0.0
 - `TestCallFileParseApi` (5) — success, retries, non-200, JSON errors, connection errors
 - `TestCallSummarizeApi` (6) — success, no choices, HTTP errors, auth headers, retries
 - `TestExtractMdContent` (6) — single/multiple results, missing keys, invalid values
-- `TestGetUniquePath` (4) — uniqueness, suffix format (5 lowercase chars)
 - `TestGetUniqueDir` (4) — directory uniqueness, suffix format
 - `TestIntegration` (5) — full flow with paginated API + summarization (success + failure + pagination)
 
@@ -188,4 +186,4 @@ cd scripts
 python3 -m pytest tests/test_pdf2md.py -v
 ```
 
-Expected: **41 tests passed**
+Expected: **37 tests passed**

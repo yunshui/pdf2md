@@ -118,7 +118,7 @@ Content-Disposition: form-data; name="end_page_id"
 }
 ```
 
-### 2.4 可能的 HTTP 状态码
+### 2.5 可能的 HTTP 状态码
 
 | 状态码 | 含义 | 处理策略 |
 |--------|------|----------|
@@ -126,7 +126,7 @@ Content-Disposition: form-data; name="end_page_id"
 | 4xx | 客户端错误（参数错误等） | 重试（配置的重试次数内） |
 | 5xx | 服务端错误 | 重试（配置的重试次数内） |
 
-### 2.5 错误场景
+### 2.6 错误场景
 
 | 错误类型 | 表现 | 处理 |
 |----------|------|------|
@@ -194,7 +194,6 @@ def extract_md_content(response_data):
 
 ```python
 def get_unique_dir(parent_dir, stem_name):
-def get_unique_path(output_dir, base_name):
 ```
 
 **输出目录流程**:
