@@ -29,11 +29,11 @@ All runnable source files are in `scripts/` relative to this skill:
 skills/pdf2md/
 ├── SKILL.md                 # This file
 └── scripts/
-    ├── pdf2md.py             # Main CLI script (~440 lines)
+    ├── pdf2md.py             # Main CLI script (~500 lines)
     ├── requirements.txt      # Runtime dependencies
     ├── requirements-dev.txt  # Dev dependencies (pytest)
     └── tests/
-        └── test_pdf2md.py    # Test suite (37 tests)
+        └── test_pdf2md.py    # Test suite (40 tests)
 ```
 
 To deploy on a new machine, copy the entire `scripts/` directory and run:
@@ -50,12 +50,13 @@ python pdf2md.py <file_or_directory_path>
 
 ### scripts/pdf2md.py
 
-Main CLI script — single file, ~480 lines, Python 3.7+.
+Main CLI script — single file, ~500 lines, Python 3.7+.
 
 **Functions:**
 
 | Function | Purpose |
 |----------|---------|
+| `get_pdf_page_count(file_path, logger)` | Read total page count from PDF file using PyMuPDF (PDF only) |
 | `resolve_files(path, logger)` | Resolve path to list of supported files (.pdf, .docx, .doc, .txt) |
 | `call_file_parse_api(config, logger, file_path, start_page, end_page, file_name)` | POST file to paginated parse API with multipart form-data + retry |
 | `call_summarize_api(config, logger, chunks_info)` | Call LLM API to generate document summary |
@@ -69,6 +70,7 @@ Main CLI script — single file, ~480 lines, Python 3.7+.
 
 ```
 requests>=2.28.0
+PyMuPDF==1.27.2.3
 ```
 
 ### scripts/requirements-dev.txt
@@ -79,11 +81,12 @@ pytest>=7.0.0
 
 ### scripts/tests/test_pdf2md.py
 
-37 tests covering all functions and integration flows.
+40 tests covering all functions and integration flows.
 
 **Test classes:**
 - `TestLoadConfig` (6) — config creation, loading, validation, new fields check
 - `TestResolveFiles` (5) — single file, directory, unsupported extensions, case insensitive
+- `TestGetPdfPageCount` (3) — valid PDF page count, import error, parse failure
 - `TestCallFileParseApi` (5) — success, retries, non-200, JSON errors, connection errors
 - `TestCallSummarizeApi` (6) — success, no choices, HTTP errors, auth headers, retries
 - `TestExtractMdContent` (6) — single/multiple results, missing keys, invalid values
@@ -126,7 +129,8 @@ File: `conf/setting.json` (auto-created with defaults on first run, relative to 
   - `start_page_id`: starting page number (0-based string)
   - `end_page_id`: ending page number (0-based string)
 - **Response**: JSON with `status`, `results` dict containing `md_content` per item
-- **Termination**: Empty `results` (`{}`) means no more content
+- **Termination (PDF)**: When `start_page >= total_pages` (read from file via pypdf)
+- **Termination (non-PDF)**: Empty `results` (`{}`) means no more content
 
 ```json
 {
@@ -152,8 +156,8 @@ Each input file gets its own `{stem_name}_md/` directory:
 output/
 └── report_md/
     ├── report.md              # Summary (with links to chunks)
-    ├── report_0-4.md          # Pages 0-4 content
-    ├── report_5-9.md          # Pages 5-9 content
+    ├── report_0-9.md          # Pages 0-9 content
+    ├── report_10-19.md        # Pages 10-19 content
     └── ...
 ```
 
@@ -186,4 +190,4 @@ cd scripts
 python3 -m pytest tests/test_pdf2md.py -v
 ```
 
-Expected: **37 tests passed**
+Expected: **40 tests passed**

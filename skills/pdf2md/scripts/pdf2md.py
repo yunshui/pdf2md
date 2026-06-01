@@ -19,6 +19,23 @@ import time
 import requests
 
 
+def get_pdf_page_count(file_path, logger):
+    """Get total page count from a PDF file using PyMuPDF. Returns int or None on failure."""
+    try:
+        import fitz
+        doc = fitz.open(file_path)
+        page_count = doc.page_count
+        doc.close()
+        logger.info("PDF page count for %s: %d", os.path.basename(file_path), page_count)
+        return page_count
+    except ImportError:
+        logger.warning("PyMuPDF not installed, cannot determine PDF page count")
+        return None
+    except Exception as e:
+        logger.warning("Failed to read PDF page count: %s", e)
+        return None
+
+
 DEFAULT_CONFIG = {
     "api_url": "http://123.192.49.73:8000/file_parse",
     "client_id": "bf-mkd",
@@ -394,8 +411,21 @@ def main():
         chunk_ranges = []  # List of (start, end, md_content)
         start_page = 0
 
+        # For PDF files, get total page count to determine when to stop
+        total_pages = None
+        if os.path.splitext(filename)[1].lower() == ".pdf":
+            total_pages = get_pdf_page_count(file_path, logger)
+
         while True:
+            # If we know total pages, clamp end_page and check termination
+            if total_pages is not None and start_page >= total_pages:
+                logger.info("Reached end of PDF (%d pages) for %s", total_pages, filename)
+                break
+
             end_page = start_page + page_num - 1
+            if total_pages is not None and end_page >= total_pages:
+                end_page = total_pages - 1
+
             result = call_file_parse_api(
                 config, logger, file_path, start_page, end_page, filename,
             )

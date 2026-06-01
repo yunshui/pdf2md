@@ -12,6 +12,7 @@
 |------|------|------|
 | 语言 | Python 3.7+ | 脚本语言，适合快速开发命令行工具 |
 | HTTP 客户端 | requests >= 2.28.0 | 成熟稳定，支持超时、重试、JSON 序列化 |
+| PDF 解析 | PyMuPDF == 1.27.2.3 | 高效，支持多种操作，可读取 PDF 总页数 |
 | 日志 | Python 标准库 logging | 内置，支持多 Handler、级别控制、格式化 |
 | 配置 | JSON 文件 | 简单易读，无需额外解析库 |
 | 架构 | 单文件脚本 | 功能明确，维护成本低，无需打包 |
@@ -92,6 +93,7 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
 
 | 函数名 | 参数 | 返回值 | 职责 | 依赖 |
 |--------|------|--------|------|------|
+| `get_pdf_page_count(file_path, logger)` | `file_path: str, logger` | `int` / `None` | 读取 PDF 总页数 | PyMuPDF (fitz) |
 | `load_config(script_dir)` | `script_dir: str` | `dict` | 加载/创建/验证配置 | os, json, sys, DEFAULT_CONFIG |
 | `setup_logging(log_dir)` | `log_dir: str` | `logging.Logger` | 初始化日志系统 | logging, datetime, os |
 | `resolve_files(path, logger)` | `path: str, logger` | `list[str]` | 解析输入文件列表 | os, glob, SUPPORTED_EXTENSIONS |
@@ -108,7 +110,12 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt"}
 ```
 磁盘文件 (.pdf/.docx)
     │
+    │  get_pdf_page_count() → 使用 PyMuPDF 读取 PDF 总页数（仅 PDF 文件）
+    ▼
+总页数 (PDF) 或 None (其他格式)
+    │
     │  call_file_parse_api() → multipart POST {file, start_page, end_page}
+    │  (PDF: end_page 不超过总页数；非 PDF: 以空 results 终止)
     ▼
 API 响应 JSON
     {
@@ -124,8 +131,8 @@ Markdown 内容
     │  写入 {stem}_{start}-{end}.md 到 {stem}_md/ 目录
     ▼
 磁盘 chunk 文件 (.md)
-    output/{stem_name}_md/{stem}_0-4.md
-    output/{stem_name}_md/{stem}_5-9.md
+    output/{stem_name}_md/{stem}_0-9.md
+    output/{stem_name}_md/{stem}_10-19.md
     ...
     │
     │  call_summarize_api() → 发送所有 chunk 内容
@@ -165,12 +172,12 @@ LLM 摘要文本
 
 ### 5.3 分页处理模式
 
-**决策**: 使用 `start_page_id` / `end_page_id` 分页请求，`results` 为空时终止。
+**决策**: 使用 `start_page_id` / `end_page_id` 分页请求。PDF 文件通过 pypdf 读取总页数后按页数终止；非 PDF 文件以空 `results` 作为终止信号。
 
 **理由**:
 - 避免单次请求过大导致超时
 - 按需获取内容，每 chunk 独立写入文件
-- 终止条件清晰（空 results = 无更多内容）
+- PDF 文件基于实际页数精确控制请求范围，避免多余的 API 调用
 
 ### 5.4 目录级输出
 

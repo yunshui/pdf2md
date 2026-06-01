@@ -81,13 +81,18 @@ python pdf2md.py data/example-output.json
 [2026-06-01 10:00:00] INFO   Processing path: documents/report.pdf
 [2026-06-01 10:00:00] INFO   Found 1 file(s) to process.
 [2026-06-01 10:00:00] INFO   Processing documents/report.pdf (1048576 bytes)
+[2026-06-01 10:00:00] INFO   PDF page count for report.pdf: 24
 [2026-06-01 10:00:00] INFO   Output directory: output/report_md
-[2026-06-01 10:00:00] INFO   Calling API for report.pdf pages 0-4 (attempt 1/3)
+[2026-06-01 10:00:00] INFO   Calling API for report.pdf pages 0-9 (attempt 1/3)
 [2026-06-01 10:00:05] INFO   API response in 5.2s, status=completed
-[2026-06-01 10:00:05] INFO   Wrote output report_0-4.md (5230 bytes) for report.pdf
-[2026-06-01 10:00:05] INFO   Calling API for report.pdf pages 5-9 (attempt 1/3)
+[2026-06-01 10:00:05] INFO   Wrote output report_0-9.md (5230 bytes) for report.pdf
+[2026-06-01 10:00:05] INFO   Calling API for report.pdf pages 10-19 (attempt 1/3)
 [2026-06-01 10:00:06] INFO   API response in 1.0s, status=completed
-[2026-06-01 10:00:06] INFO   No more content from API for report.pdf at pages 5-9
+[2026-06-01 10:00:06] INFO   Wrote output report_10-19.md (4800 bytes) for report.pdf
+[2026-06-01 10:00:06] INFO   Calling API for report.pdf pages 20-23 (attempt 1/3)
+[2026-06-01 10:00:07] INFO   API response in 0.8s, status=completed
+[2026-06-01 10:00:07] INFO   Wrote output report_20-23.md (2100 bytes) for report.pdf
+[2026-06-01 10:00:07] INFO   Reached end of PDF (24 pages) for report.pdf; stopping pagination.
 [2026-06-01 10:00:06] INFO   Calling summarize API (attempt 1/3)
 [2026-06-01 10:00:10] INFO   Summarize API returned 350 chars
 [2026-06-01 10:00:10] INFO   Wrote summary file output/report_md/report.md
@@ -99,13 +104,13 @@ python pdf2md.py data/example-output.json
 ```
 [2026-06-01 10:00:00] INFO   Processing documents/report.pdf (1048576 bytes)
 [2026-06-01 10:00:00] INFO   Output directory: output/report_md
-[2026-06-01 10:00:00] INFO   Calling API for report.pdf pages 0-4 (attempt 1/3)
+[2026-06-01 10:00:00] INFO   Calling API for report.pdf pages 0-9 (attempt 1/3)
 [2026-06-01 10:00:32] ERROR  Request failed after 32.0s: ConnectionError (attempt 1)
-[2026-06-01 10:00:34] INFO   Calling API for report.pdf pages 0-4 (attempt 2/3)
+[2026-06-01 10:00:34] INFO   Calling API for report.pdf pages 0-9 (attempt 2/3)
 [2026-06-01 10:01:06] ERROR  Request failed after 32.0s: ConnectionError (attempt 2)
-[2026-06-01 10:01:08] INFO   Calling API for report.pdf pages 0-4 (attempt 3/3)
+[2026-06-01 10:01:08] INFO   Calling API for report.pdf pages 0-9 (attempt 3/3)
 [2026-06-01 10:01:40] ERROR  Request failed after 32.0s: ConnectionError (attempt 3)
-[2026-06-01 10:01:40] ERROR  API call failed for report.pdf pages 0-4
+[2026-06-01 10:01:40] ERROR  API call failed for report.pdf pages 0-9
 [2026-06-01 10:01:40] INFO   Processed 1 files: 0 success, 1 failed
 ```
 

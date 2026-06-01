@@ -46,8 +46,8 @@ python pdf2md.py <文件或目录路径>
 output/
 └── report_md/
     ├── report.md              # 摘要文件（含 chunk 链接）
-    ├── report_0-4.md          # 第 0-4 页内容
-    ├── report_5-9.md          # 第 5-9 页内容
+    ├── report_0-9.md          # 第 0-9 页内容
+    ├── report_10-19.md        # 第 10-19 页内容
     └── ...
 ```
 
@@ -62,8 +62,8 @@ output/
 
 ## Page Chunks
 
-- [report_0-4.md](report_0-4.md)
-- [report_5-9.md](report_5-9.md)
+- [report_0-9.md](report_0-9.md)
+- [report_10-19.md](report_10-19.md)
 ```
 
 ## 日志文件

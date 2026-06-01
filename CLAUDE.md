@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Tech Stack
 
 - **Language**: Python 3.7+
-- **Dependencies**: `requests` (see `requirements.txt`)
+- **Dependencies**: `requests`, `PyMuPDF` (see `requirements.txt`)
 - **Single-file script**: `pdf2md.py` — all logic in one file
 
 ## Setup and Usage
@@ -54,7 +54,8 @@ Config file: `conf/setting.json` (created with defaults on first run if missing)
 ### Paginated Parse API (`/file_parse`)
 - **Request**: `POST {api_url}` with header `client_id: {client_id}`, multipart form-data: `files` (binary file), `start_page_id`, `end_page_id`
 - **Response**: JSON with `status`, `results` dict containing `md_content` per item
-- **Termination**: Empty `results` (`{}`) means no more content
+- **Termination (PDF)**: When `start_page >= total_pages` (read via pypdf)
+- **Termination (non-PDF)**: Empty `results` (`{}`) means no more content
 
 ### LLM Summarize API (`/v1/chat/completions`)
 - **Request**: `POST {summarize_api_url}` with `Authorization: Bearer {api_key}`, body `{"model": model, "messages": [{"role": "user", "content": prompt}]}`

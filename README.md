@@ -46,8 +46,8 @@ Each input file gets its own output directory `{stem_name}_md/`:
 output/
 └── report_md/
     ├── report.md              # Summary file (with chunk links)
-    ├── report_0-4.md          # Pages 0-4 content
-    ├── report_5-9.md          # Pages 5-9 content
+    ├── report_0-9.md          # Pages 0-9 content
+    ├── report_10-19.md        # Pages 10-19 content
     └── ...
 ```
 
@@ -62,8 +62,8 @@ output/
 
 ## Page Chunks
 
-- [report_0-4.md](report_0-4.md)
-- [report_5-9.md](report_5-9.md)
+- [report_0-9.md](report_0-9.md)
+- [report_10-19.md](report_10-19.md)
 ```
 
 ## Logs

@@ -194,6 +194,40 @@ class TestResolveFiles:
 
 
 # ============================================================
+# get_pdf_page_count Tests
+# ============================================================
+
+class TestGetPdfPageCount:
+    """Tests for get_pdf_page_count function."""
+
+    @patch("fitz.open")
+    def test_returns_page_count(self, mock_open, tmp_dir):
+        """Should return the number of pages from a valid PDF."""
+        mock_doc = MagicMock()
+        mock_doc.page_count = 10
+        mock_open.return_value = mock_doc
+
+        logger = MagicMock()
+        result = pdf2md.get_pdf_page_count(os.path.join(tmp_dir, "test.pdf"), logger)
+        assert result == 10
+        mock_doc.close.assert_called_once()
+
+    def test_returns_none_on_import_error(self, tmp_dir):
+        """Should return None when PyMuPDF is not installed."""
+        with patch.dict("sys.modules", {"fitz": None}):
+            logger = MagicMock()
+            result = pdf2md.get_pdf_page_count(os.path.join(tmp_dir, "test.pdf"), logger)
+        assert result is None
+
+    def test_returns_none_on_parse_failure(self, tmp_dir):
+        """Should return None when PDF parsing fails."""
+        with patch("fitz.open", side_effect=Exception("invalid PDF")):
+            logger = MagicMock()
+            result = pdf2md.get_pdf_page_count(os.path.join(tmp_dir, "test.pdf"), logger)
+        assert result is None
+
+
+# ============================================================
 # call_file_parse_api Tests
 # ============================================================
 
