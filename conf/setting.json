@@ -1,9 +1,14 @@
 {
-  "api_url": "http://123.192.49.73:8000/convert2markdown",
+  "api_url": "http://123.192.49.73:8000/file_parse",
   "client_id": "bf-mkd",
   "max_retries": 3,
   "retry_delay": 2,
   "timeout": 120,
   "output_dir": "output",
-  "log_dir": "logs"
+  "log_dir": "logs",
+  "page_num": 5,
+  "summarize_api_url": "http://127.0.0.1:8000/v1/chat/completions",
+  "summarize_api_key": "",
+  "summarize_model": "gpt-4o",
+  "summarize_prompt": "You are a document summarization assistant. Given the following markdown content from different page ranges of a document, create a concise summary (within 500 words). Include key points and important details. For specifics, refer to the individual page files.\n\n{chunks_info}\n\nSummary:"
 }

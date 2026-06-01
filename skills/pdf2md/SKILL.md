@@ -1,6 +1,6 @@
 ---
 name: pdf2md
-description: Convert PDF, DOCX, DOC, or TXT files to Markdown via a remote API
+description: Convert PDF, DOCX, DOC, or TXT files to Markdown via a paginated API with LLM summarization
 ---
 
 # pdf2md - PDF/Document to Markdown Converter
@@ -29,11 +29,11 @@ All runnable source files are in `scripts/` relative to this skill:
 skills/pdf2md/
 ├── SKILL.md                 # This file
 └── scripts/
-    ├── pdf2md.py             # Main CLI script (375 lines)
+    ├── pdf2md.py             # Main CLI script (~440 lines)
     ├── requirements.txt      # Runtime dependencies
     ├── requirements-dev.txt  # Dev dependencies (pytest)
     └── tests/
-        └── test_pdf2md.py    # Test suite (34 tests)
+        └── test_pdf2md.py    # Test suite (41 tests)
 ```
 
 To deploy on a new machine, copy the entire `scripts/` directory and run:
@@ -50,20 +50,21 @@ python pdf2md.py <file_or_directory_path>
 
 ### scripts/pdf2md.py
 
-Main CLI script — single file, ~375 lines, Python 3.7+.
+Main CLI script — single file, ~440 lines, Python 3.7+.
 
 **Functions:**
 
 | Function | Purpose |
 |----------|---------|
 | `resolve_files(path, logger)` | Resolve path to list of supported files (.pdf, .docx, .doc, .txt) |
-| `file_to_base64(file_path)` | Read file, return base64-encoded content |
-| `call_api(config, logger, base64, name)` | POST to API with retry, return response dict or None |
+| `call_file_parse_api(config, logger, file_path, start_page, end_page, file_name)` | POST file to paginated parse API with multipart form-data + retry |
+| `call_summarize_api(config, logger, chunks_info)` | Call LLM API to generate document summary |
 | `extract_md_content(response_data)` | Extract markdown from API response, list of (index, content) |
-| `get_unique_path(output_dir, base_name)` | Return unique output path, suffix on collision |
+| `get_unique_path(output_dir, base_name)` | Return unique output file path, suffix on collision |
+| `get_unique_dir(parent_dir, stem_name)` | Return unique output directory path, suffix on collision |
 | `load_config(script_dir)` | Load/create config from conf/setting.json |
 | `setup_logging(log_dir)` | Set up file + console logging, daily rotation |
-| `main()` | Entry point: parse args, load config, run conversion |
+| `main()` | Entry point: paginate → call API → write chunks → summarize |
 
 ### scripts/requirements.txt
 
@@ -79,16 +80,17 @@ pytest>=7.0.0
 
 ### scripts/tests/test_pdf2md.py
 
-34 tests covering all functions and integration flows.
+41 tests covering all functions and integration flows.
 
 **Test classes:**
-- `TestLoadConfig` (5) — config creation, loading, validation errors
+- `TestLoadConfig` (6) — config creation, loading, validation, new fields check
 - `TestResolveFiles` (5) — single file, directory, unsupported extensions, case insensitive
-- `TestFileToBase64` (3) — encoding, empty files, missing files
-- `TestCallApi` (7) — success, retries, non-200, JSON errors, connection errors, timeouts
+- `TestCallFileParseApi` (5) — success, retries, non-200, JSON errors, connection errors
+- `TestCallSummarizeApi` (6) — success, no choices, HTTP errors, auth headers, retries
 - `TestExtractMdContent` (6) — single/multiple results, missing keys, invalid values
 - `TestGetUniquePath` (4) — uniqueness, suffix format (5 lowercase chars)
-- `TestIntegration` (4) — full flow with mocked API (success + failure, no args, nonexistent path)
+- `TestGetUniqueDir` (4) — directory uniqueness, suffix format
+- `TestIntegration` (5) — full flow with paginated API + summarization (success + failure + pagination)
 
 ---
 
@@ -98,13 +100,18 @@ File: `conf/setting.json` (auto-created with defaults on first run, relative to 
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `api_url` | `http://123.192.49.73:8000/convert2markdown` | API endpoint |
+| `api_url` | `http://123.192.49.73:8000/file_parse` | Paginated parse API endpoint |
 | `client_id` | `bf-mkd` | API client identifier header |
 | `max_retries` | `3` | Max retry attempts on failure |
 | `retry_delay` | `2` | Seconds between retries |
 | `timeout` | `120` | Request timeout in seconds |
 | `output_dir` | `output` | Output directory for `.md` files |
 | `log_dir` | `logs` | Log directory |
+| `page_num` | `5` | Pages per API request |
+| `summarize_api_url` | `http://127.0.0.1:8000/v1/chat/completions` | LLM summary API endpoint |
+| `summarize_api_key` | `""` | LLM API key (optional) |
+| `summarize_model` | `gpt-4o` | LLM model name |
+| `summarize_prompt` | *(see DEFAULT_CONFIG)* | LLM summary prompt template |
 
 **Notes:**
 - Relative `output_dir` and `log_dir` are resolved relative to the script directory
@@ -114,19 +121,42 @@ File: `conf/setting.json` (auto-created with defaults on first run, relative to 
 
 ## API Contract
 
-- **Request**: `POST {api_url}` with header `client_id: {client_id}`, body `{"files": [base64_string]}`
-- **Response**: JSON with `status`, `results` dict containing `md_content` per item
+### Paginated Parse API (`/file_parse`)
 
-### Response format
+- **Request**: `POST {api_url}` with header `client_id: {client_id}`, multipart form-data:
+  - `files`: binary file content
+  - `start_page_id`: starting page number (0-based string)
+  - `end_page_id`: ending page number (0-based string)
+- **Response**: JSON with `status`, `results` dict containing `md_content` per item
+- **Termination**: Empty `results` (`{}`) means no more content
 
 ```json
 {
-  "task_id": "uuid",
   "status": "completed",
   "results": {
     "0": { "md_content": "# Markdown content here" }
   }
 }
+```
+
+### LLM Summarize API (`/v1/chat/completions`)
+
+- **Request**: `POST {summarize_api_url}` with `Authorization: Bearer {api_key}` (optional), OpenAI-compatible body
+- **Response**: `choices[0].message.content` contains the summary text
+
+---
+
+## Output Structure
+
+Each input file gets its own `{stem_name}_md/` directory:
+
+```
+output/
+└── report_md/
+    ├── report.md              # Summary (with links to chunks)
+    ├── report_0-4.md          # Pages 0-4 content
+    ├── report_5-9.md          # Pages 5-9 content
+    └── ...
 ```
 
 ---
@@ -146,6 +176,7 @@ File: `conf/setting.json` (auto-created with defaults on first run, relative to 
 | API timeout | Retry up to `max_retries`, then skip file |
 | API connection error | Retry up to `max_retries`, then skip file |
 | API JSON error | No retry, skip file immediately |
+| Output directory collision | Append `_XXXXX` (5 random lowercase chars) |
 | Output file collision | Append `_XXXXX` (5 random lowercase chars) |
 
 ---
@@ -157,4 +188,4 @@ cd scripts
 python3 -m pytest tests/test_pdf2md.py -v
 ```
 
-Expected: **34 tests passed**
+Expected: **41 tests passed**
