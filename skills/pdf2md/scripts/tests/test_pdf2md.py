@@ -196,6 +196,61 @@ class TestResolveFiles:
 
 
 # ============================================================
+# scan_existing_chunks Tests
+# ============================================================
+
+class TestScanExistingChunks:
+    """Tests for scan_existing_chunks function."""
+
+    def test_no_existing_directory(self, tmp_dir):
+        """Should return (False, [], 0) when directory doesn't exist."""
+        output_dir = os.path.join(tmp_dir, "nonexistent")
+        is_complete, chunks, start_page = pdf2md.scan_existing_chunks(output_dir, "report")
+        assert is_complete is False
+        assert chunks == []
+        assert start_page == 0
+
+    def test_summary_file_exists(self, tmp_dir):
+        """Should return is_complete=True when summary file exists."""
+        output_dir = os.path.join(tmp_dir, "report_md")
+        os.makedirs(output_dir)
+        with open(os.path.join(output_dir, "report.md"), "w") as f:
+            f.write("# report Summary\n")
+        is_complete, chunks, start_page = pdf2md.scan_existing_chunks(output_dir, "report")
+        assert is_complete is True
+        assert chunks == []
+        assert start_page == 0
+
+    def test_existing_chunks_no_summary(self, tmp_dir):
+        """Should detect existing chunks and return resume page."""
+        output_dir = os.path.join(tmp_dir, "report_md")
+        os.makedirs(output_dir)
+        with open(os.path.join(output_dir, "report_0-4.md"), "w") as f:
+            f.write("# Pages 0-4")
+        with open(os.path.join(output_dir, "report_5-9.md"), "w") as f:
+            f.write("# Pages 5-9")
+        is_complete, chunks, start_page = pdf2md.scan_existing_chunks(output_dir, "report")
+        assert is_complete is False
+        assert len(chunks) == 2
+        assert start_page == 10
+        # Chunks should be sorted by start page
+        assert chunks[0][0] == 0
+        assert chunks[1][0] == 5
+
+    def test_partial_chunks(self, tmp_dir):
+        """Should resume from last completed chunk."""
+        output_dir = os.path.join(tmp_dir, "doc_md")
+        os.makedirs(output_dir)
+        with open(os.path.join(output_dir, "doc_0-4.md"), "w") as f:
+            f.write("# Pages 0-4")
+        # Chunk 5-9 is missing (was interrupted)
+        is_complete, chunks, start_page = pdf2md.scan_existing_chunks(output_dir, "doc")
+        assert is_complete is False
+        assert len(chunks) == 1
+        assert start_page == 5
+
+
+# ============================================================
 # get_pdf_page_count Tests
 # ============================================================
 
@@ -766,3 +821,129 @@ class TestIntegration:
             summary_content = f.read()
         assert "report_0-4.md" in summary_content
         assert "report_5-9.md" in summary_content
+
+    @patch("pdf2md.load_config")
+    @patch("pdf2md.requests.post")
+    def test_resume_from_existing_chunks(self, mock_post, mock_load_config, tmp_dir):
+        """Should resume from existing chunks instead of re-processing."""
+        test_file = os.path.join(tmp_dir, "report.txt")
+        with open(test_file, "wb") as f:
+            f.write(b"Page content")
+
+        # Create existing output directory with a chunk file (simulating interrupted run)
+        output_dir = os.path.join(tmp_dir, "output")
+        file_output_dir = os.path.join(output_dir, "report_md")
+        os.makedirs(file_output_dir)
+        with open(os.path.join(file_output_dir, "report_0-4.md"), "w", encoding="utf-8") as f:
+            f.write("# Pages 0-4\n\nExisting chunk content.")
+
+        config = {
+            "api_url": "http://example.com/file_parse",
+            "client_id": "test",
+            "max_retries": 1,
+            "retry_delay": 0,
+            "timeout": 5,
+            "output_dir": output_dir,
+            "log_dir": os.path.join(tmp_dir, "logs"),
+            "page_num": 5,
+            "summarize_api_url": "http://example.com/v1/chat/completions",
+            "summarize_api_key": "test-key",
+            "summarize_model": "gpt-4o",
+            "summarize_timeout": 60,
+            "summarize_prompt": "Summarize: {content}\n\nSummary:",
+        }
+        mock_load_config.return_value = config
+
+        # First call returns content for pages 5-9 (resume point)
+        parse_response_1 = MagicMock()
+        parse_response_1.status_code = 200
+        parse_response_1.json.return_value = {
+            "status": "completed",
+            "results": {"0": {"md_content": "# Pages 5-9"}},
+        }
+
+        # Second call returns empty results (end of doc)
+        parse_response_2 = MagicMock()
+        parse_response_2.status_code = 200
+        parse_response_2.json.return_value = {
+            "status": "completed",
+            "results": {},
+        }
+
+        # Summarize responses (first for existing chunk 0-4, second for new chunk 5-9)
+        summarize_response_1 = MagicMock()
+        summarize_response_1.status_code = 200
+        summarize_response_1.json.return_value = {
+            "choices": [{"message": {"content": "Summary of pages 0-4."}}],
+        }
+
+        summarize_response_2 = MagicMock()
+        summarize_response_2.status_code = 200
+        summarize_response_2.json.return_value = {
+            "choices": [{"message": {"content": "Summary of pages 5-9."}}],
+        }
+
+        mock_post.side_effect = [
+            parse_response_1, summarize_response_2,
+            parse_response_2, summarize_response_1,
+        ]
+
+        with patch("sys.argv", ["pdf2md.py", test_file]):
+            with pytest.raises(SystemExit) as exc_info:
+                pdf2md.main()
+            assert exc_info.value.code == 0
+
+        # Verify new chunk file was created
+        chunk2 = os.path.join(file_output_dir, "report_5-9.md")
+        assert os.path.isfile(chunk2)
+
+        # Verify summary references both chunks
+        summary_file = os.path.join(file_output_dir, "report.md")
+        with open(summary_file, "r", encoding="utf-8") as f:
+            summary_content = f.read()
+        assert "report_0-4.md" in summary_content
+        assert "report_5-9.md" in summary_content
+        assert "Summary of pages 0-4." in summary_content
+        assert "Summary of pages 5-9." in summary_content
+
+    @patch("pdf2md.load_config")
+    @patch("pdf2md.requests.post")
+    def test_skip_if_summary_exists(self, mock_post, mock_load_config, tmp_dir):
+        """Should skip processing if summary file already exists."""
+        test_file = os.path.join(tmp_dir, "report.txt")
+        with open(test_file, "wb") as f:
+            f.write(b"Page content")
+
+        # Create existing output directory with summary file
+        output_dir = os.path.join(tmp_dir, "output")
+        file_output_dir = os.path.join(output_dir, "report_md")
+        os.makedirs(file_output_dir)
+        with open(os.path.join(file_output_dir, "report.md"), "w", encoding="utf-8") as f:
+            f.write("# report Summary\n\nAlready complete.")
+        with open(os.path.join(file_output_dir, "report_0-4.md"), "w", encoding="utf-8") as f:
+            f.write("# Pages 0-4")
+
+        config = {
+            "api_url": "http://example.com/file_parse",
+            "client_id": "test",
+            "max_retries": 1,
+            "retry_delay": 0,
+            "timeout": 5,
+            "output_dir": output_dir,
+            "log_dir": os.path.join(tmp_dir, "logs"),
+            "page_num": 5,
+            "summarize_api_url": "http://example.com/v1/chat/completions",
+            "summarize_api_key": "test-key",
+            "summarize_model": "gpt-4o",
+            "summarize_timeout": 60,
+            "summarize_prompt": "Summarize: {content}\n\nSummary:",
+        }
+        mock_load_config.return_value = config
+
+        with patch("sys.argv", ["pdf2md.py", test_file]):
+            with pytest.raises(SystemExit) as exc_info:
+                pdf2md.main()
+            assert exc_info.value.code == 0
+
+        # No API calls should be made
+        mock_post.assert_not_called()

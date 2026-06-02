@@ -57,6 +57,7 @@ Main CLI script — single file, ~500 lines, Python 3.7+.
 | Function | Purpose |
 |----------|---------|
 | `get_pdf_page_count(file_path, logger)` | Read total page count from PDF file using PyMuPDF (PDF only) |
+| `scan_existing_chunks(output_dir, stem_name)` | Scan for existing chunk files, detect resume state |
 | `resolve_files(path, logger)` | Resolve path to list of supported files (.pdf, .docx, .doc, .txt) |
 | `call_file_parse_api(config, logger, file_path, start_page, end_page, file_name)` | POST file to paginated parse API with multipart form-data + retry |
 | `call_summarize_api(config, logger, content)` | Call LLM API to generate summary for a single chunk |
@@ -81,11 +82,12 @@ pytest>=7.0.0
 
 ### scripts/tests/test_pdf2md.py
 
-40 tests covering all functions and integration flows.
+46 tests covering all functions and integration flows.
 
 **Test classes:**
 - `TestLoadConfig` (6) — config creation, loading, validation, new fields check
 - `TestResolveFiles` (5) — single file, directory, unsupported extensions, case insensitive
+- `TestScanExistingChunks` (4) — no directory, summary exists, chunks exist, partial chunks
 - `TestGetPdfPageCount` (3) — valid PDF page count, import error, parse failure
 - `TestCallFileParseApi` (5) — success, retries, non-200, JSON errors, connection errors
 - `TestCallSummarizeApi` (6) — success, no choices, HTTP errors, auth headers, retries
@@ -218,4 +220,4 @@ cd scripts
 python3 -m pytest tests/test_pdf2md.py -v
 ```
 
-Expected: **40 tests passed**
+Expected: **46 tests passed**

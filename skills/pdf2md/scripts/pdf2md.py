@@ -16,7 +16,43 @@ import string
 import sys
 import time
 
+import re
 import requests
+
+
+def scan_existing_chunks(output_dir, stem_name):
+    """Scan output directory for existing chunk files.
+
+    Returns:
+        tuple: (is_complete, chunk_ranges, start_page)
+            - is_complete: True if summary file exists (file fully processed)
+            - chunk_ranges: list of (start, end, chunk_file, summary_text) for existing chunks
+            - start_page: next page to process (0 if no chunks exist)
+    """
+    summary_path = os.path.join(output_dir, f"{stem_name}.md")
+    if os.path.isfile(summary_path):
+        return True, [], 0
+
+    if not os.path.isdir(output_dir):
+        return False, [], 0
+
+    chunk_ranges = []
+    pattern = re.compile(rf"^{re.escape(stem_name)}_(\d+)-(\d+)\.md$")
+    max_end = -1
+
+    for fname in os.listdir(output_dir):
+        match = pattern.match(fname)
+        if match:
+            start = int(match.group(1))
+            end = int(match.group(2))
+            chunk_ranges.append((start, end, fname, ""))
+            max_end = max(max_end, end)
+
+    if chunk_ranges:
+        chunk_ranges.sort(key=lambda x: x[0])
+        return False, chunk_ranges, max_end + 1
+
+    return False, [], 0
 
 
 def get_pdf_page_count(file_path, logger):
@@ -404,14 +440,39 @@ def main():
             failure_count += 1
             continue
 
-        # Create per-file output directory: {output_dir}/{stem_name}_md/
-        file_output_dir = get_unique_dir(config["output_dir"], stem_name)
+        # Check for existing output directory (resume support)
+        # Use the exact directory name: {stem_name}_md/
+        exact_dir = os.path.join(config["output_dir"], f"{stem_name}_md")
+        if os.path.isdir(exact_dir):
+            # Use existing directory for resume
+            file_output_dir = exact_dir
+            is_complete, chunk_ranges, resume_page = scan_existing_chunks(
+                file_output_dir, stem_name,
+            )
+            if is_complete:
+                logger.info(
+                    "Summary file already exists for %s, skipping (already complete).",
+                    filename,
+                )
+                success_count += 1
+                continue
+            if chunk_ranges:
+                logger.info(
+                    "Found %d existing chunk(s) for %s, resuming from page %d.",
+                    len(chunk_ranges), filename, resume_page,
+                )
+        else:
+            # No existing directory, create a new unique one
+            file_output_dir = get_unique_dir(config["output_dir"], stem_name)
+            chunk_ranges = []
+            resume_page = 0
+
+        # Create per-file output directory
         os.makedirs(file_output_dir, exist_ok=True)
         logger.info("Output directory: %s", file_output_dir)
 
         # Paginated API calls
-        chunk_ranges = []  # List of (start, end, chunk_file, summary)
-        start_page = 0
+        start_page = resume_page
 
         # For PDF files, get total page count to determine when to stop
         total_pages = None
@@ -472,6 +533,20 @@ def main():
         if not file_ok:
             failure_count += 1
             continue
+
+        # When resuming, re-summarize existing chunks that don't have summaries
+        if resume_page > 0:
+            for i, (s, e, cfile, summary) in enumerate(chunk_ranges):
+                if not summary:
+                    chunk_path = os.path.join(file_output_dir, cfile)
+                    try:
+                        with open(chunk_path, "r", encoding="utf-8") as f:
+                            chunk_md = f.read()
+                        summary_text = call_summarize_api(config, logger, chunk_md)
+                        chunk_ranges[i] = (s, e, cfile, summary_text)
+                        logger.info("Re-summarized existing chunk %s", cfile)
+                    except OSError as e:
+                        logger.error("Failed to read chunk %s for re-summarization: %s", cfile, e)
 
         # Write summary file: {stem_name}.md with per-chunk summaries and links
         summary_path = os.path.join(file_output_dir, f"{stem_name}.md")
