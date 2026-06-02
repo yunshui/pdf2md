@@ -44,14 +44,14 @@ DEFAULT_CONFIG = {
     "timeout": 120,
     "output_dir": "output",
     "log_dir": "logs",
-    "page_num": 10,
+    "page_num": 5,
     "summarize_api_url": "http://123.192.49.9:8086/v1/chat/completions",
     "summarize_api_key": "123",
     "summarize_model": "qwen3.5",
     "summarize_timeout": 200,
     "summarize_prompt": (
         "You are a document summarization assistant. Given the following markdown "
-        "content, create a concise summary (within 500 words). Include key points "
+        "content, create a concise summary (within 300 words). Include key points "
         "and important details.\n\n{content}\n\nSummary:"
     ),
 }

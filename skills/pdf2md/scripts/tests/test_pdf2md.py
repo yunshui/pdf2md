@@ -29,7 +29,7 @@ def sample_config():
         "timeout": 5,
         "output_dir": "output",
         "log_dir": "logs",
-        "page_num": 10,
+        "page_num": 5,
         "summarize_api_url": "http://example.com/v1/chat/completions",
         "summarize_api_key": "test-key",
         "summarize_model": "gpt-4o",
@@ -583,7 +583,7 @@ class TestIntegration:
             "timeout": 5,
             "output_dir": os.path.join(tmp_dir, "output"),
             "log_dir": os.path.join(tmp_dir, "logs"),
-            "page_num": 10,
+            "page_num": 5,
             "summarize_api_url": "http://example.com/v1/chat/completions",
             "summarize_api_key": "test-key",
             "summarize_model": "gpt-4o",
@@ -629,7 +629,7 @@ class TestIntegration:
         assert os.path.isdir(file_output_dir)
 
         # Verify chunk file was created
-        chunk_file = os.path.join(file_output_dir, "test_0-9.md")
+        chunk_file = os.path.join(file_output_dir, "test_0-4.md")
         assert os.path.isfile(chunk_file)
 
         with open(chunk_file, "r", encoding="utf-8") as f:
@@ -644,7 +644,7 @@ class TestIntegration:
             summary_content = f.read()
         assert "# test Summary" in summary_content
         assert "This is a test summary." in summary_content
-        assert "test_0-9.md" in summary_content
+        assert "test_0-4.md" in summary_content
 
     @patch("pdf2md.load_config")
     @patch("pdf2md.requests.post")
@@ -663,7 +663,7 @@ class TestIntegration:
             "timeout": 5,
             "output_dir": os.path.join(tmp_dir, "output"),
             "log_dir": os.path.join(tmp_dir, "logs"),
-            "page_num": 10,
+            "page_num": 5,
             "summarize_api_url": "http://example.com/v1/chat/completions",
             "summarize_api_key": "test-key",
             "summarize_model": "gpt-4o",
@@ -697,7 +697,7 @@ class TestIntegration:
             "timeout": 5,
             "output_dir": os.path.join(tmp_dir, "output"),
             "log_dir": os.path.join(tmp_dir, "logs"),
-            "page_num": 10,  # 10 pages per chunk
+            "page_num": 5,  # 5 pages per chunk
             "summarize_api_url": "http://example.com/v1/chat/completions",
             "summarize_api_key": "test-key",
             "summarize_model": "gpt-4o",
@@ -755,8 +755,8 @@ class TestIntegration:
         output_dir = config["output_dir"]
         file_output_dir = os.path.join(output_dir, "report_md")
 
-        chunk1 = os.path.join(file_output_dir, "report_0-9.md")
-        chunk2 = os.path.join(file_output_dir, "report_10-19.md")
+        chunk1 = os.path.join(file_output_dir, "report_0-4.md")
+        chunk2 = os.path.join(file_output_dir, "report_5-9.md")
         assert os.path.isfile(chunk1)
         assert os.path.isfile(chunk2)
 
@@ -764,5 +764,5 @@ class TestIntegration:
         summary_file = os.path.join(file_output_dir, "report.md")
         with open(summary_file, "r", encoding="utf-8") as f:
             summary_content = f.read()
-        assert "report_0-9.md" in summary_content
-        assert "report_10-19.md" in summary_content
+        assert "report_0-4.md" in summary_content
+        assert "report_5-9.md" in summary_content
