@@ -55,6 +55,33 @@ def scan_existing_chunks(output_dir, stem_name):
     return False, [], 0
 
 
+def find_resume_dir(output_base, stem_name):
+    """Find the most recent output directory for a given file.
+
+    Searches for directories matching `{stem_name}_md` or `{stem_name}_md_*`
+    and returns the one with the most recent modification time.
+    Returns None if no matching directory exists.
+    """
+    prefix = f"{stem_name}_md"
+    candidates = []
+    if not os.path.isdir(output_base):
+        return None
+
+    for dname in os.listdir(output_base):
+        if dname == prefix or dname.startswith(prefix + "_"):
+            full_path = os.path.join(output_base, dname)
+            if os.path.isdir(full_path):
+                mtime = os.path.getmtime(full_path)
+                candidates.append((mtime, full_path))
+
+    if not candidates:
+        return None
+
+    # Return the most recently modified directory
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
+
+
 def get_pdf_page_count(file_path, logger):
     """Get total page count from a PDF file using PyMuPDF. Returns int or None on failure."""
     try:
@@ -441,11 +468,10 @@ def main():
             continue
 
         # Check for existing output directory (resume support)
-        # Use the exact directory name: {stem_name}_md/
-        exact_dir = os.path.join(config["output_dir"], f"{stem_name}_md")
-        if os.path.isdir(exact_dir):
-            # Use existing directory for resume
-            file_output_dir = exact_dir
+        # Find the most recent directory matching {stem_name}_md or {stem_name}_md_*
+        resume_dir = find_resume_dir(config["output_dir"], stem_name)
+        if resume_dir:
+            file_output_dir = resume_dir
             is_complete, chunk_ranges, resume_page = scan_existing_chunks(
                 file_output_dir, stem_name,
             )
@@ -458,8 +484,9 @@ def main():
                 continue
             if chunk_ranges:
                 logger.info(
-                    "Found %d existing chunk(s) for %s, resuming from page %d.",
-                    len(chunk_ranges), filename, resume_page,
+                    "Found %d existing chunk(s) for %s in %s, resuming from page %d.",
+                    len(chunk_ranges), filename,
+                    os.path.basename(file_output_dir), resume_page,
                 )
         else:
             # No existing directory, create a new unique one

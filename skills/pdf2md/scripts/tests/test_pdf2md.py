@@ -251,6 +251,51 @@ class TestScanExistingChunks:
 
 
 # ============================================================
+# find_resume_dir Tests
+# ============================================================
+
+class TestFindResumeDir:
+    """Tests for find_resume_dir function."""
+
+    def test_no_matching_directory(self, tmp_dir):
+        """Should return None when no matching directory exists."""
+        result = pdf2md.find_resume_dir(tmp_dir, "report")
+        assert result is None
+
+    def test_exact_match(self, tmp_dir):
+        """Should find exact {stem_name}_md directory."""
+        target = os.path.join(tmp_dir, "report_md")
+        os.makedirs(target)
+        result = pdf2md.find_resume_dir(tmp_dir, "report")
+        assert result == target
+
+    def test_suffixed_match(self, tmp_dir):
+        """Should find {stem_name}_md_XXXXX directory."""
+        target = os.path.join(tmp_dir, "report_md_abcde")
+        os.makedirs(target)
+        result = pdf2md.find_resume_dir(tmp_dir, "report")
+        assert result == target
+
+    def test_returns_most_recent(self, tmp_dir):
+        """Should return the most recently modified directory."""
+        old_dir = os.path.join(tmp_dir, "report_md_old12")
+        new_dir = os.path.join(tmp_dir, "report_md_new34")
+        os.makedirs(old_dir)
+        os.makedirs(new_dir)
+        # Make old_dir older
+        os.utime(old_dir, (1000000, 1000000))
+        result = pdf2md.find_resume_dir(tmp_dir, "report")
+        assert result == new_dir
+
+    def test_ignores_unrelated_directories(self, tmp_dir):
+        """Should ignore directories that don't match the pattern."""
+        os.makedirs(os.path.join(tmp_dir, "other_md"))
+        os.makedirs(os.path.join(tmp_dir, "report_backup"))
+        result = pdf2md.find_resume_dir(tmp_dir, "report")
+        assert result is None
+
+
+# ============================================================
 # get_pdf_page_count Tests
 # ============================================================
 
